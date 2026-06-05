@@ -1,10 +1,30 @@
 name: Build
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build-all:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            script_path: ./scripts/linux/build.sh
+            artifact_path: build/linux/release/
+            
+          - os: macos-latest
+            platform: macos
+            script_path: ./scripts/macos/build.sh
+            artifact_path: build/macos/release/
+            
+          - os: windows-latest
+            platform: windows
+            script_path: ./scripts/windows/build.sh
+            artifact_path: build/windows/release/
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,12 +51,13 @@ jobs:
           include-templates: true
 
       - name: Run Build Script
+        shell: bash
         run: |
-          chmod +x ./scripts/linux/build.sh
-          ./scripts/linux/build.sh
+          chmod +x ${{ matrix.script_path }}
+          ${{ matrix.script_path }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-release-build
-          path: build/linux/release/
+          name: ${{ matrix.platform }}-release-build
+          path: ${{ matrix.artifact_path }}
