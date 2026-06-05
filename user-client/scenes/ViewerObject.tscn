@@ -1,0 +1,37 @@
+[gd_scene load_steps=7 format=3 uid="uid://o82mj34e6oif"]
+
+[ext_resource type="Script" uid="uid://cupbfnd4mch3c" path="res://scripts/viewer_object.gd" id="1_j5tj8"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j5tj8"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+billboard_mode = 1
+
+[sub_resource type="QuadMesh" id="QuadMesh_x8e4e"]
+material = SubResource("StandardMaterial3D_j5tj8")
+
+[sub_resource type="MultiMesh" id="MultiMesh_rbqdd"]
+resource_local_to_scene = true
+transform_format = 1
+use_colors = true
+mesh = SubResource("QuadMesh_x8e4e")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x8e4e"]
+vertex_color_use_as_albedo = true
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_j5tj8"]
+resource_local_to_scene = true
+
+[node name="ViewerObject" type="Node3D"]
+script = ExtResource("1_j5tj8")
+source_path = "/home/arieltr/Downloads/bunny/reconstruction/bun_zipper_res3.ply"
+
+[node name="PointCloudView" type="MultiMeshInstance3D" parent="."]
+unique_name_in_owner = true
+multimesh = SubResource("MultiMesh_rbqdd")
+
+[node name="MeshView" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+visible = false
+material_override = SubResource("StandardMaterial3D_x8e4e")
+mesh = SubResource("ArrayMesh_j5tj8")

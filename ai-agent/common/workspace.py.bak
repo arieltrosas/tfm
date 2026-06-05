@@ -1,0 +1,110 @@
+import shutil
+import uuid
+from pathlib import Path
+from contextlib import contextmanager
+from filelock import FileLock
+from pydantic import BaseModel
+from collections.abc import Generator
+
+
+# -----------------------------------------------------------------------------
+# Models
+
+
+class FileInfo(BaseModel):
+    file_id: str
+    file_name: str
+
+
+class Manifest(BaseModel):
+    files: dict[str, FileInfo]
+
+
+# -----------------------------------------------------------------------------
+# Utility
+
+
+def _get_paths(workspace_dir: str | Path):
+    ws = Path(workspace_dir)
+    return ws / "manifest.json", ws / "workspace.lock"
+
+
+
+# -----------------------------------------------------------------------------
+# Workspace Functions
+
+
+@contextmanager
+def transaction(workspace_dir: str | Path) -> Generator[Manifest]:
+    manifest_path, lock_path = _get_paths(workspace_dir)
+    
+    with FileLock(lock_path):
+        if manifest_path.exists():
+            raw = manifest_path.read_text("utf-8")
+            manifest = Manifest.model_validate_json(raw)
+        else:
+            manifest = Manifest(files={})
+            
+        yield manifest
+        
+        manifest_path.write_text(
+            manifest.model_dump_json(indent=4),
+            encoding="utf-8"
+        )
+
+
+def add_file(workspace_dir: str | Path, real_file_path: str | Path) -> str:
+    ws_path = Path(workspace_dir)
+    source = Path(real_file_path)
+    
+    if not source.is_file():
+        raise FileNotFoundError(f"Source file not found: {real_file_path}")
+
+    file_id = uuid.uuid4().hex
+    destination = ws_path / file_id
+    
+    shutil.copy2(source, destination)
+    
+    stat = destination.stat()
+
+    with transaction(workspace_dir) as manifest:
+        files = manifest.files
+        files[file_id] = FileInfo(
+            file_id=file_id,
+            file_name=source.name
+        )
+
+    return file_id
+
+
+def del_file(workspace_dir: str | Path, file_id: str) -> None:
+    ws_path = Path(workspace_dir)
+    target_file = ws_path / file_id
+
+    with transaction(workspace_dir) as manifest:
+        if file_id not in manifest.files:
+            raise FileNotFoundError(f"File ID '{file_id}' not found in manifest.")
+        
+        del manifest.files[file_id]
+
+    if target_file.is_file():
+        target_file.unlink()
+    else:
+        raise FileNotFoundError(f"File '{file_id}' was missing from the disk.")
+
+
+def create_file(workspace_dir: str | Path, file_name: str) -> str:
+    ws_path = Path(workspace_dir)
+    
+    file_id = uuid.uuid4().hex
+    destination = ws_path / file_id
+    destination.touch()
+    
+    with transaction(workspace_dir) as manifest:
+        files = manifest.files
+        files[file_id] = FileInfo(
+            file_id=file_id,
+            file_name=file_name
+        )
+
+    return file_id

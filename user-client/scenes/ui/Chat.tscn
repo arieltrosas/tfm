@@ -1,0 +1,80 @@
+[gd_scene load_steps=3 format=3 uid="uid://hf6qysxl5dqv"]
+
+[ext_resource type="Script" uid="uid://vmqra3njjcn0" path="res://scripts/chat.gd" id="1_pq8so"]
+[ext_resource type="Texture2D" uid="uid://ccxhxbwjg72sg" path="res://resources/icon-send.svg" id="2_pq8so"]
+
+[node name="Chat" type="PanelContainer"]
+offset_right = 482.0
+offset_bottom = 646.0
+size_flags_horizontal = 3
+script = ExtResource("1_pq8so")
+
+[node name="Chat" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MsgListScroll" type="ScrollContainer" parent="Chat"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 4.0
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="Chat/MsgListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="MsgList" type="VBoxContainer" parent="Chat/MsgListScroll/MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="MarginContainer" type="MarginContainer" parent="Chat"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ChatBox" type="VBoxContainer" parent="Chat/MarginContainer"]
+layout_mode = 2
+
+[node name="ChatBox" type="TextEdit" parent="Chat/MarginContainer/ChatBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "Type here ..."
+
+[node name="Tools" type="HBoxContainer" parent="Chat/MarginContainer/ChatBox"]
+layout_mode = 2
+size_flags_horizontal = 8
+
+[node name="ModelButton" type="OptionButton" parent="Chat/MarginContainer/ChatBox/Tools"]
+unique_name_in_owner = true
+layout_mode = 2
+selected = 0
+fit_to_longest_item = false
+item_count = 2
+popup/item_0/text = "Model"
+popup/item_0/id = 0
+popup/item_1/text = "Long Model Name"
+popup/item_1/id = 1
+
+[node name="SendButton" type="Button" parent="Chat/MarginContainer/ChatBox/Tools"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("2_pq8so")
+expand_icon = true
+
+[connection signal="gui_input" from="Chat/MarginContainer/ChatBox/ChatBox" to="." method="_on_chat_box_gui_input"]
+[connection signal="item_selected" from="Chat/MarginContainer/ChatBox/Tools/ModelButton" to="." method="_on_model_button_item_selected"]
+[connection signal="pressed" from="Chat/MarginContainer/ChatBox/Tools/SendButton" to="." method="_on_send_button_pressed"]

@@ -1,0 +1,75 @@
+[gd_scene load_steps=6 format=3 uid="uid://c2jlugpjv5wj6"]
+
+[ext_resource type="Script" uid="uid://uh00eb24yduw" path="res://scripts/main.gd" id="1_c01mt"]
+[ext_resource type="Texture2D" uid="uid://c46ntnrnfpw6g" path="res://icon.svg" id="1_rarhs"]
+[ext_resource type="PackedScene" uid="uid://6pybjfcm0y65" path="res://scenes/ui/Workspace.tscn" id="2_vcsgt"]
+[ext_resource type="PackedScene" uid="uid://bv10k2f36u5kv" path="res://scenes/ui/Viewer.tscn" id="4_c01mt"]
+[ext_resource type="PackedScene" uid="uid://hf6qysxl5dqv" path="res://scenes/ui/Chat.tscn" id="5_vcsgt"]
+
+[node name="Main" type="MarginContainer"]
+clip_contents = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+script = ExtResource("1_c01mt")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ToolBar" type="HBoxContainer" parent="VBoxContainer/PanelContainer"]
+layout_mode = 2
+
+[node name="OpenButton" type="Button" parent="VBoxContainer/PanelContainer/ToolBar"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("1_rarhs")
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftPanel" type="PanelContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VSplitContainer" type="VSplitContainer" parent="VBoxContainer/HSplitContainer/LeftPanel"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Workspace" parent="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer" instance=ExtResource("2_vcsgt")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 4.0
+
+[node name="Viewer" parent="VBoxContainer/HSplitContainer/HSplitContainer" instance=ExtResource("4_c01mt")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Chat" parent="VBoxContainer/HSplitContainer/HSplitContainer" instance=ExtResource("5_vcsgt")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[connection signal="viewer_object_added" from="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace" to="." method="_on_workspace_viewer_object_added"]
+[connection signal="viewer_object_removed" from="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace" to="." method="_on_workspace_viewer_object_removed"]

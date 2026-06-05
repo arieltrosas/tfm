@@ -1,0 +1,79 @@
+[gd_scene load_steps=4 format=3 uid="uid://bv10k2f36u5kv"]
+
+[ext_resource type="PackedScene" uid="uid://ctqr0yb3db0hk" path="res://scenes/Viewer3D.tscn" id="1_4dxd7"]
+[ext_resource type="Script" uid="uid://bcg58qrnyskg5" path="res://scripts/viewer.gd" id="1_g8q63"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rarhs"]
+bg_color = Color(0.6, 0.6, 0.6, 0.9882353)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="Viewer" type="PanelContainer"]
+clip_contents = true
+offset_right = 600.0
+offset_bottom = 600.0
+size_flags_stretch_ratio = 2.0
+script = ExtResource("1_g8q63")
+
+[node name="ObjectUpdateTimer" type="Timer" parent="."]
+autostart = true
+ignore_time_scale = true
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="ToolBar" type="MarginContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ToolBar"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/ToolBar/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Point Size"
+
+[node name="PointSizeSlider" type="HSlider" parent="VBoxContainer/ToolBar/HBoxContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.0
+value = 0.5
+
+[node name="Viewport" type="MarginContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/Viewport"]
+clip_children = 1
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_rarhs")
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="VBoxContainer/Viewport/PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="VBoxContainer/Viewport/PanelContainer/SubViewportContainer"]
+handle_input_locally = false
+size = Vector2i(590, 558)
+render_target_update_mode = 4
+
+[node name="Viewer3D" parent="VBoxContainer/Viewport/PanelContainer/SubViewportContainer/SubViewport" instance=ExtResource("1_4dxd7")]
+unique_name_in_owner = true
+
+[connection signal="timeout" from="ObjectUpdateTimer" to="." method="_on_object_update_timer_timeout"]
+[connection signal="value_changed" from="VBoxContainer/ToolBar/HBoxContainer/PointSizeSlider" to="." method="_on_point_size_slider_value_changed"]

@@ -1,0 +1,92 @@
+[gd_scene load_steps=6 format=3 uid="uid://6pybjfcm0y65"]
+
+[ext_resource type="Script" uid="uid://clubv0xdupvq8" path="res://scripts/workspace.gd" id="1_4cxba"]
+[ext_resource type="Texture2D" uid="uid://820n13fen6py" path="res://resources/icon-plus.png" id="2_8xyhq"]
+[ext_resource type="Texture2D" uid="uid://b42b16pod8s4" path="res://resources/icon-cube-3d.svg" id="2_fjygb"]
+[ext_resource type="Texture2D" uid="uid://cym1i0wv63hdf" path="res://resources/icon-save.svg" id="3_f1xha"]
+[ext_resource type="Texture2D" uid="uid://byyklyxnr81d5" path="res://resources/icon-delete.png" id="3_fjygb"]
+
+[node name="Workspace" type="PanelContainer"]
+offset_right = 288.0
+offset_bottom = 433.0
+script = ExtResource("1_4cxba")
+
+[node name="FileDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+oversampling_override = 1.0
+title = "Open File(s)"
+file_mode = 1
+display_mode = 1
+access = 2
+use_native_dialog = true
+
+[node name="WorkspaceRefreshTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+autostart = true
+ignore_time_scale = true
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer/PanelContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ItemList" type="VBoxContainer" parent="MarginContainer/VBoxContainer/PanelContainer/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ActionBar" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="Visualize" type="Button" parent="MarginContainer/VBoxContainer/ActionBar"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("2_fjygb")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Save" type="Button" parent="MarginContainer/VBoxContainer/ActionBar"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("3_f1xha")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Add" type="Button" parent="MarginContainer/VBoxContainer/ActionBar"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("2_8xyhq")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Remove" type="Button" parent="MarginContainer/VBoxContainer/ActionBar"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("3_fjygb")
+icon_alignment = 1
+expand_icon = true
+
+[connection signal="item_added" from="." to="." method="_on_item_added"]
+[connection signal="files_selected" from="FileDialog" to="." method="_on_file_dialog_files_selected"]
+[connection signal="timeout" from="WorkspaceRefreshTimer" to="." method="_on_workspace_refresh_timer_timeout"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Visualize" to="." method="_on_visualize_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Save" to="." method="_on_save_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Add" to="." method="_on_add_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Remove" to="." method="_on_remove_pressed"]
