@@ -39,10 +39,10 @@ echo "============================================"
 cd "$FRONTEND_DIR"
 
 echo "-> Exporting Debug Game..."
-godot --headless --export-debug "Windows Desktop" "$DEBUG_OUT/frontend.exe"
+godot --headless --export-debug "Windows" "$DEBUG_OUT/frontend.exe"
 
 echo "-> Exporting Release Game..."
-godot --headless --export-release "Windows Desktop" "$RELEASE_OUT/frontend.exe"
+godot --headless --export-release "Windows" "$RELEASE_OUT/frontend.exe"
 
 echo "============================================"
 echo " 4. Assembling Components                    "
