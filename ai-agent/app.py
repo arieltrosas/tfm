@@ -8,7 +8,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from mcp_client.client import MCPClient
+from mcp_client.client import MCPClient, OllamaClientAuthError
 from pydantic import BaseModel
 
 # -----------------------------------------------------------------------------
@@ -29,8 +29,7 @@ async def lifespan(app: FastAPI):
     # init MCP
 
     try:
-        mcp_client.connect_ollama_client()
-
+        await mcp_client.connect_ollama_client()
         models = await mcp_client.list_models()
         if models:
             mcp_client.model = models[0]
@@ -70,9 +69,24 @@ async def chat(request: ChatRequest):
         return ChatResponse(response=result)
     except Exception as e:
         mcp_client.logger.error(f"Error processing query via HTTP: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal MCP Server Error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+
+# -----------------------------------------------------------------------------
+# Auth Endpoint
+
+class AuthRequest(BaseModel):
+    host: str
+    key: str
+
+@app.post("/auth")
+async def auth(request: AuthRequest):
+    try:
+        await mcp_client.connect_ollama_client(host=request.host, key=request.key)
+    except OllamaClientAuthError:
+        raise HTTPException(status_code=401, detail=f"Could not authenticate to Ollama")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 # -----------------------------------------------------------------------------

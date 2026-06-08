@@ -11,7 +11,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import TextContent
 from mcp.client.stdio import stdio_client
 
-from ollama import ChatResponse, Message, Tool
+from ollama import ChatResponse, Message, Tool, ResponseError
 from ollama import AsyncClient as OllamaClient
 
 # -----------------------------------------------------------------------------
@@ -25,6 +25,10 @@ class MCPClientNotConnected(Exception):
 
 class OllamaClientNotConnected(Exception):
     """ Raised when the MCP client cannot connect to Ollama """ 
+    pass
+
+class OllamaClientAuthError(Exception):
+    """ Raised when the MCP client fails to authenticate to Ollama """
     pass
 
 # -----------------------------------------------------------------------------
@@ -81,11 +85,20 @@ class MCPClient:
         await self.exit_stack.aclose()
 
 
-    def connect_ollama_client(self, host: str | None = None):
+    async def connect_ollama_client(self, host: str | None = None, key: str | None = None):
         """
         Creates the Ollama client connection.
         """
-        self.ollama_client = OllamaClient(host=host)
+        self.ollama_client = OllamaClient(host=host, headers = {"Authorization": f"Bearer {key}"})
+        try:
+            await self.ollama_client.list()
+        except ResponseError as e:
+            if e.status_code == 401:
+                raise OllamaClientAuthError("Could not authenticate to Ollama provider")
+            else:
+                raise OllamaClientNotConnected(f"Could not connect to Ollama provider ({e.status_code}): {e.error}")
+        except Exception as e:
+                raise Exception(f"Interal Server Error")
 
 
     async def connect_mcp_server(self, workspace_dir: str):

@@ -74,6 +74,16 @@ func _get_backend_binary() -> String:
 
 # Endpoints
 
+func auth(host: String, key: String) -> bool:
+	var endpoint = "/auth"
+	var response = await _send_request(endpoint, HTTPClient.METHOD_POST, JSON.stringify({"host": host, "key": key}))
+	
+	if _backend_error(response):
+		_print_backend_error(endpoint, response)
+		return false
+	
+	return true
+
 
 func chat(msg: String) -> String:
 	var endpoint = "/chat"

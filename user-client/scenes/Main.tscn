@@ -1,10 +1,26 @@
-[gd_scene load_steps=6 format=3 uid="uid://c2jlugpjv5wj6"]
+[gd_scene load_steps=9 format=3 uid="uid://c2jlugpjv5wj6"]
 
 [ext_resource type="Script" uid="uid://uh00eb24yduw" path="res://scripts/main.gd" id="1_c01mt"]
 [ext_resource type="Texture2D" uid="uid://c46ntnrnfpw6g" path="res://icon.svg" id="1_rarhs"]
 [ext_resource type="PackedScene" uid="uid://6pybjfcm0y65" path="res://scenes/ui/Workspace.tscn" id="2_vcsgt"]
+[ext_resource type="Texture2D" uid="uid://bs2u268jy7te4" path="res://resources/icon-log-in.svg" id="3_c01mt"]
 [ext_resource type="PackedScene" uid="uid://bv10k2f36u5kv" path="res://scenes/ui/Viewer.tscn" id="4_c01mt"]
 [ext_resource type="PackedScene" uid="uid://hf6qysxl5dqv" path="res://scenes/ui/Chat.tscn" id="5_vcsgt"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c01mt"]
+bg_color = Color(0.16862746, 0.16862746, 0.16862746, 0.8666667)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_nxtc6"]
+content_margin_left = 0.0
+content_margin_right = 0.0
+color = Color(0.5019608, 0.5019608, 0.5019608, 0.1882353)
+grow_begin = -4.0
+grow_end = -4.0
+vertical = true
 
 [node name="Main" type="MarginContainer"]
 clip_contents = true
@@ -19,6 +35,99 @@ theme_override_constants/margin_right = 5
 theme_override_constants/margin_bottom = 5
 script = ExtResource("1_c01mt")
 
+[node name="InfoPopup" type="PopupPanel" parent="."]
+unique_name_in_owner = true
+oversampling_override = 1.0
+initial_position = 1
+size = Vector2i(300, 200)
+visible = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_c01mt")
+
+[node name="MarginContainer" type="MarginContainer" parent="InfoPopup"]
+offset_right = 300.0
+offset_bottom = 200.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="VBoxContainer" type="VBoxContainer" parent="InfoPopup/MarginContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="InfoPopup/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_vertical = 6
+size_flags_stretch_ratio = 2.0
+text = "Succesfully connected to http://www.ollama-provider.com"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Ok" type="Button" parent="InfoPopup/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "OK"
+
+[node name="AuthPopup" type="PopupPanel" parent="."]
+unique_name_in_owner = true
+oversampling_override = 1.0
+initial_position = 1
+size = Vector2i(500, 300)
+visible = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_c01mt")
+
+[node name="MarginContainer" type="MarginContainer" parent="AuthPopup"]
+offset_right = 500.0
+offset_bottom = 300.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="VBoxContainer" type="VBoxContainer" parent="AuthPopup/MarginContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="AuthPopup/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="HostInput" type="LineEdit" parent="AuthPopup/MarginContainer/VBoxContainer/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "Ollama Host: 127.0.0.1:11434"
+alignment = 1
+
+[node name="KeyInput" type="LineEdit" parent="AuthPopup/MarginContainer/VBoxContainer/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "API Key: abcd1234"
+alignment = 1
+secret = true
+secret_character = "*"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="AuthPopup/MarginContainer/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="Accept" type="Button" parent="AuthPopup/MarginContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Accept"
+
+[node name="Cancel" type="Button" parent="AuthPopup/MarginContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Cancel"
+
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 2
 
@@ -32,6 +141,19 @@ layout_mode = 2
 custom_minimum_size = Vector2(25, 25)
 layout_mode = 2
 icon = ExtResource("1_rarhs")
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="VSeparator" type="VSeparator" parent="VBoxContainer/PanelContainer/ToolBar"]
+layout_mode = 2
+theme_override_constants/separation = 0
+theme_override_styles/separator = SubResource("StyleBoxLine_nxtc6")
+
+[node name="AuthButton" type="Button" parent="VBoxContainer/PanelContainer/ToolBar"]
+custom_minimum_size = Vector2(25, 25)
+layout_mode = 2
+icon = ExtResource("3_c01mt")
 flat = true
 icon_alignment = 1
 expand_icon = true
@@ -71,5 +193,9 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 
+[connection signal="pressed" from="InfoPopup/MarginContainer/VBoxContainer/Ok" to="." method="_on_info_popup_ok_pressed"]
+[connection signal="pressed" from="AuthPopup/MarginContainer/VBoxContainer/HBoxContainer/Accept" to="." method="_on_auth_popup_accept_pressed"]
+[connection signal="pressed" from="AuthPopup/MarginContainer/VBoxContainer/HBoxContainer/Cancel" to="." method="_on_cancel_pressed"]
+[connection signal="pressed" from="VBoxContainer/PanelContainer/ToolBar/AuthButton" to="." method="_on_auth_button_pressed"]
 [connection signal="viewer_object_added" from="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace" to="." method="_on_workspace_viewer_object_added"]
 [connection signal="viewer_object_removed" from="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace" to="." method="_on_workspace_viewer_object_removed"]
