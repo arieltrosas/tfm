@@ -18,8 +18,13 @@ func _on_info_popup_ok_pressed() -> void:
 
 
 func _on_auth_popup_accept_pressed() -> void:
-	var host = (%AuthPopup.get_node("MarginContainer/VBoxContainer/VBoxContainer/HostInput") as LineEdit).text
-	var key = (%AuthPopup.get_node("MarginContainer/VBoxContainer/VBoxContainer/KeyInput") as LineEdit).text
+	var host_edit = %AuthPopup.get_node("MarginContainer/VBoxContainer/VBoxContainer/HostInput") as LineEdit
+	var key_edit = %AuthPopup.get_node("MarginContainer/VBoxContainer/VBoxContainer/KeyInput") as LineEdit
+	
+	var host = host_edit.text
+	var key = key_edit.text
+	
+	key_edit.text = ""
 	
 	var info
 	if await BackendAPI.auth(host, key):
