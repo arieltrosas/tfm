@@ -11,7 +11,7 @@ from mcp.server.fastmcp import FastMCP
 # -----------------------------------------------------------------------------
 # Global Scope
 
-WORKSPACE_DIR = ""
+WORKSPACE_DIR = os.environ["MCP_WORKSPACE_DIR"]
 
 __version__ = '0.1.0'
 

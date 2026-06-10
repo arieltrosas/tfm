@@ -45,8 +45,9 @@ def run_mcp_client(port_file: str | None):
 
 
 def run_mcp_server(workspace_dir: str):
+    os.environ["MCP_WORKSPACE_DIR"] = workspace_dir
+
     import mcp_server as server
-    server.WORKSPACE_DIR = workspace_dir
     server.mcp.run(transport="stdio")
 
 
