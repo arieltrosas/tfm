@@ -17,7 +17,7 @@ use_colors = true
 mesh = SubResource("QuadMesh_x8e4e")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x8e4e"]
-vertex_color_use_as_albedo = true
+albedo_color = Color(0.41215247, 0.41215247, 0.41215247, 1)
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_j5tj8"]
 resource_local_to_scene = true

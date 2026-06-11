@@ -35,20 +35,19 @@ class OllamaClientAuthError(Exception):
 # Utility
 
 
-def _mcp_server_command(workspace_dir: str) -> tuple[str, list[str]]:
+def _mcp_server_command() -> tuple[str, list[str]]:
     command: str
     args: list[str]
 
     if getattr(sys, "frozen", False):
         command = sys.executable
-        args = ["server", workspace_dir]
+        args = ["server"]
     else:
         command = sys.executable
         script_path = os.path.abspath(sys.argv[0])
-        args = [script_path, "server", workspace_dir]
+        args = [script_path, "server"]
 
     return command, args
-
 
 
 # -----------------------------------------------------------------------------
@@ -98,23 +97,19 @@ class MCPClient:
             else:
                 raise OllamaClientNotConnected(f"Could not connect to Ollama provider ({e.status_code}): {e.error}")
         except Exception as e:
-                raise Exception(f"Interal Server Error")
+                raise Exception(f"Internal Server Error")
 
 
-    async def connect_mcp_server(self, workspace_dir: str):
+    async def connect_mcp_server(self):
         """
         Spawns the MCP server process and connects the client to the MCP server.
-
-        Arguments:
-            mcp_server_module: Name of the python module that will run the mcp server.
-            workspace_dir: Path of the workspace temporary dir assigned to the server.
         """
 
         # 1. Start the MCP server & create a session
 
         env = os.environ.copy()
 
-        command, args = _mcp_server_command(workspace_dir)
+        command, args = _mcp_server_command()
 
         server_params = StdioServerParameters(
             command=command,
@@ -154,19 +149,7 @@ class MCPClient:
     async def process_chat_query(self, query: str) -> str:
         """
         Process a chat query and gives back a response.
-
-        Arguments:
-            query: String containing the query to resolve.
-
-        Returns:
-            A string with the response.
-
-        Raises:
-            MCPClientNotConnected
-            OllaClientNotConnected
         """
-
-        # 0. Check client status
 
         if not self.session:
             raise MCPClientNotConnected("Could not find an active MCP server session")
@@ -174,35 +157,42 @@ class MCPClient:
         if not self.ollama_client:
             raise OllamaClientNotConnected("Could not find an Ollama connection")
 
-        # 1. Prepare the first message and discover tools
+        # 1. Enforce the presence of the strategic Contextual System Prompt
+        system_content = (
+            "You are an expert AI assistant tightly connected to a Model Context Protocol (MCP) server "
+            "built for 3D geometric processing and engineering calculations.\n"
+            "You have direct access to an active processing workspace and centralized application state through "
+            "your exposed tools.\n"
+            "CRITICAL OPERATIONAL NOTICE: The internal workspace file directory and active application variables "
+            "are highly volatile and subject to modification outside of this direct conversation history. "
+            "You must frequently and deliberately execute your tools to inspect and validate the actual, AT EACH INTERACTION WITH THE USER "
+            "to be sure of the state of the workspace (e.g., listing tracked files, validating application state) before giving a response, "
+            "forming execution assumptions or running complex calculations."
+        )
 
-        ## 1.1 Create the initial message and add it to the chat
+        # Inject or repair system prompt placement at the beginning of the context loop
+        if not self.chat or self.chat[0].role != 'system':
+            self.chat.insert(0, Message(role='system', content=system_content))
+        else:
+            # Keep it fresh/updated if system parameters adjust
+            self.chat[0] = Message(role='system', content=system_content)
 
+        # 2. Append incoming user action query
         initial_message = Message(role='user', content=query)
-        self.chat.append(initial_message) # TODO: create a chat window strategy to discard old chats
-
-        # 2. Message Loop
+        self.chat.append(initial_message)
 
         while True: # tool_call_loop
-
-
-            ## 2.1 Send the message and wait for the response, then append the response to the chat
-
             response: ChatResponse = await self.ollama_client.chat(
                 model=self.model,
                 messages=self.chat,
                 tools=self.tools,
-                think=True, # TODO: refine thinking strategy
+                think=True,
             )
 
             self.chat.append(response.message)
 
-            # 2.2 If not tools are called, stop
-
             if not response.message.tool_calls:
-                break # tool_call_loop
-
-            # 2.3 Make all tools calls and append the results to the chat
+                break
 
             for tc in response.message.tool_calls:
                 tool_name = tc.function.name
@@ -215,8 +205,6 @@ class MCPClient:
                     content = f"Error executing tool {tool_name}: {str(e)}"
 
                 self.chat.append(Message(role='tool', content=content, tool_name=tool_name))
-
-        # 3. Return the final response
 
         self.logger.info(
             {"chat": self.chat},

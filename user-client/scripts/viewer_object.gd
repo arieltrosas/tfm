@@ -6,8 +6,8 @@ enum ViewMode { POINT_CLOUD, MESH }
 const POINT_CLOUD = ViewMode.POINT_CLOUD
 const MESH = ViewMode.MESH
 
-@export var view_mode: ViewMode = POINT_CLOUD: set = _set_view_mode
 @export_global_file var source_path: String = ""
+var view_mode: ViewMode = MESH: set = _set_view_mode
 
 var _mtime_seconds: int = 0
 
@@ -40,6 +40,7 @@ func _set_view_mode(value: ViewMode) -> void:
 func _load_object() -> void:
 	var file = FileAccess.open(source_path, FileAccess.READ)
 	if not file or not file.is_open():
+		printerr("PLY: Failed to open file '%s'" % source_path)
 		return
 	
 	var ply := PLY.new()
@@ -47,50 +48,74 @@ func _load_object() -> void:
 	
 	var fatal: bool = false
 	for i in ply.get_error_count():
-		fatal = ply.get_error(i) in [PLY.NOT_PLY, PLY.BAD_FORMAT]
+		fatal = fatal or (ply.get_error(i) in [PLY.NOT_PLY, PLY.BAD_FORMAT])
 		printerr("PLY: Error parsing file '%s': %s" % [source_path, ply.get_error_msg(i)])
 	
 	if fatal:
 		return
-	
-	# load the point cloud view
-	
-	var mmesh: MultiMesh = %PointCloudView.multimesh
-	
-	mmesh.instance_count = ply.get_vertex_count()
-	for i in mmesh.instance_count:
-		mmesh.set_instance_transform(i, Transform3D.IDENTITY.translated(ply.get_vertex_position(i)))
-		mmesh.set_instance_color(i, ply.get_vertex_color(i))
-	
-	# load the mesh view
-	
-	var mesh: ArrayMesh = %MeshView.mesh as ArrayMesh
-	mesh.clear_surfaces()
-	
-	if not ply.get_face_count():
+		
+	var vcount := ply.get_vertex_count()
+	if vcount == 0:
 		return
 	
-	var vertex_arr: PackedVector3Array = []
-	var color_arr: PackedColorArray = []
-	var index_arr: PackedInt32Array = []
+	# --- 1. Load the Point Cloud View ---
 	
-	vertex_arr.resize(ply.get_vertex_count())
-	color_arr.resize(ply.get_vertex_count())
+	var mmesh: MultiMesh = %PointCloudView.multimesh
+	if mmesh:
+		mmesh.instance_count = vcount
+		for i in vcount:
+			# Cache the position to minimize cross-language overhead
+			var pos := ply.get_vertex_position(i) 
+			mmesh.set_instance_transform(i, Transform3D(Basis(), pos))
+			mmesh.set_instance_color(i, ply.get_vertex_color(i))
 	
-	for i in ply.get_vertex_count():
+	# --- 2. Load the Mesh View ---
+	
+	if not %MeshView:
+		return
+		
+	var mesh: ArrayMesh = %MeshView.mesh as ArrayMesh
+	if not mesh:
+		mesh = ArrayMesh.new()
+		%MeshView.mesh = mesh
+	else:
+		mesh.clear_surfaces()
+	
+	var fcount := ply.get_face_count()
+	if not fcount:
+		return
+	
+	var vertex_arr := PackedVector3Array()
+	var color_arr := PackedColorArray()
+	var normal_arr := PackedVector3Array()
+	var index_arr := PackedInt32Array()
+	
+	vertex_arr.resize(vcount)
+	color_arr.resize(vcount)
+	normal_arr.resize(vcount)
+	
+	for i in vcount:
 		vertex_arr[i] = ply.get_vertex_position(i)
 		color_arr[i] = ply.get_vertex_color(i)
+		normal_arr[i] = ply.get_vertex_normal(i)
 	
-	for i in ply.get_face_count():
-		var face = ply.get_face_indices(i)
+	for i in fcount:
+		var face := ply.get_face_indices(i)
+		if face.size() < 3:
+			continue
+		
 		face.reverse()
-		for index in face:
-			index_arr.push_back(index)
+		
+		for j in range(1, face.size() - 1):
+			index_arr.push_back(face[0])
+			index_arr.push_back(face[j])
+			index_arr.push_back(face[j + 1])
 	
-	var surface_array = []
-	surface_array.resize(ArrayMesh.ARRAY_MAX)
-	surface_array[ArrayMesh.ARRAY_VERTEX] = vertex_arr
-	surface_array[ArrayMesh.ARRAY_COLOR] = color_arr
-	surface_array[ArrayMesh.ARRAY_INDEX] = index_arr
+	var surface_array := []
+	surface_array.resize(Mesh.ARRAY_MAX)
+	surface_array[Mesh.ARRAY_VERTEX] = vertex_arr
+	surface_array[Mesh.ARRAY_COLOR] = color_arr
+	surface_array[Mesh.ARRAY_INDEX] = index_arr
+	surface_array[Mesh.ARRAY_NORMAL] = normal_arr
 	
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surface_array)

@@ -74,6 +74,56 @@ func _get_backend_binary() -> String:
 
 # Endpoints
 
+func get_app_state() -> Dictionary:
+	var endpoint = "/state"
+	var response = await _send_request(endpoint)
+	
+	if _backend_error(response):
+		_print_backend_error(endpoint, response)
+		return {}
+	
+	return response["body"]
+
+
+func volume_get() -> Variant:
+	var endpoint = "/volume/get"
+	var response = await _send_request(endpoint)
+	
+	if _backend_error(response):
+		_print_backend_error(endpoint, response)
+		return null
+	
+	var body: Dictionary = response["body"]
+	return _parse_aabb(body.get("volume"))
+
+
+func volume_set(aabb: Variant) -> bool:
+	var endpoint = "/volume/set"
+	
+	var volume_payload = null
+	if aabb is AABB:
+		volume_payload = {
+			"x": aabb.position.x,
+			"y": aabb.position.y,
+			"z": aabb.position.z,
+			"w": aabb.size.x,
+			"h": aabb.size.y,
+			"d": aabb.size.z
+		}
+	
+	var payload = {
+		"volume": volume_payload
+	}
+	
+	var response = await _send_request(endpoint, HTTPClient.METHOD_POST, JSON.stringify(payload))
+	
+	if _backend_error(response):
+		_print_backend_error(endpoint, response)
+		return false
+	
+	return true
+
+
 func auth(host: String, key: String) -> bool:
 	var endpoint = "/auth"
 	var response = await _send_request(endpoint, HTTPClient.METHOD_POST, JSON.stringify({"host": host, "key": key}))
@@ -248,3 +298,13 @@ func _backend_error(response: Dictionary) -> bool:
 
 func _print_backend_error(endpoint: String, response: Dictionary) -> void:
 	printerr("BackendAPI Error at %s: Error %s %s" % [endpoint, response["code"], response["message"]])
+
+
+func _parse_aabb(dict: Variant) -> Variant:
+	if dict == null or not (dict is Dictionary):
+		return null
+		
+	var pos = Vector3(dict.get("x", 0.0), dict.get("y", 0.0), dict.get("z", 0.0))
+	var size = Vector3(dict.get("w", 0.0), dict.get("h", 0.0), dict.get("d", 0.0))
+	
+	return AABB(pos, size)
