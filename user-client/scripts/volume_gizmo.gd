@@ -2,24 +2,23 @@
 class_name VolumeGizmo extends MeshInstance3D
 
 # Signals
-
 signal volume_changed(volume: AABB)
 
-
 # Disable Gizmo
-
 @export var disabled: bool = false
 
-# Volume
 
+# Selection Pixel Radius (in Screen space)
+@export var selection_radius_px: float = 24.0
+
+
+# Volume
 @export var box: AABB = AABB(Vector3.ZERO, Vector3.ONE):
 	set(value):
 		box = value
 		_rebuild()
 
-
 # Colors
-
 @export var edge_color: Color = Color.CYAN:
 	set(value):
 		edge_color = value
@@ -30,9 +29,7 @@ signal volume_changed(volume: AABB)
 		corner_color = value
 		_apply_colors()
 
-
 # Materials
-
 @export var edge_material: StandardMaterial3D:
 	set(value):
 		edge_material = value
@@ -43,13 +40,12 @@ signal volume_changed(volume: AABB)
 		corner_material = value
 		_apply_materials()
 
-
 # Geometry
-
 @export_range(0.001, 0.5, 0.001)
 var edge_thickness: float = 0.01:
 	set(value):
 		edge_thickness = value
+		_rebuild()
 
 @export_range(0.001, 10.0, 0.001)
 var corner_radius: float = 0.1:
@@ -65,10 +61,10 @@ var corner_segments: int = 8:
 
 
 # ------------------------------------------------------------
-# INTERNAL DRAG STATE (ADDED)
+# INTERNAL DRAG STATE
 # ------------------------------------------------------------
 
-var _corner_handles: Array[Area3D] = []
+var _corner_handles: Array[MeshInstance3D] = []
 var _dragging_corner: int = -1
 
 
@@ -81,12 +77,9 @@ func _ready() -> void:
 	_apply_materials()
 	_rebuild()
 
-	if _corner_handles.is_empty():
-		_create_corner_handles()
-
 
 # ------------------------------------------------------------
-# MATERIAL FUNCTIONS (UNCHANGED)
+# MATERIAL FUNCTIONS
 # ------------------------------------------------------------
 
 func _ensure_materials() -> void:
@@ -110,10 +103,12 @@ func _apply_materials() -> void:
 		return
 
 	if mesh.get_surface_count() > 0 and edge_material:
-		mesh.surface_set_material(0, edge_material)
+		set_surface_override_material(0, edge_material)
 
-	if mesh.get_surface_count() > 1 and corner_material:
-		mesh.surface_set_material(1, corner_material)
+	# Update materials on individual corner meshes
+	for mesh_instance in _corner_handles:
+		if is_instance_valid(mesh_instance):
+			mesh_instance.material_override = corner_material
 
 	_apply_colors()
 
@@ -132,15 +127,13 @@ func _apply_colors() -> void:
 
 func _rebuild() -> void:
 	var result := ArrayMesh.new()
-
 	_add_edge_mesh(result)
-	_add_corner_mesh(result)
-
 	mesh = result
-	_apply_materials()
 
 	if _corner_handles.is_empty():
 		_create_corner_handles()
+	else:
+		_update_corner_meshes()
 
 	_update_corner_handles()
 
@@ -167,47 +160,61 @@ func get_corners() -> Array[Vector3]:
 
 
 # ------------------------------------------------------------
-# CORNER HANDLES (ADDED)
+# CORNER HANDLES (VISUAL ONLY)
 # ------------------------------------------------------------
 
-func _create_corner_handles() -> void:
-	for h in _corner_handles:
-		if is_instance_valid(h):
-			h.queue_free()
-
+func _clear_old_handles() -> void:
 	_corner_handles.clear()
+	var targets: Array[Node] = []
+	for child in get_children():
+		if child.name.begins_with("CornerMesh_"):
+			targets.append(child)
+	for child in targets:
+		remove_child(child)
+		child.free()
+
+
+func _create_corner_handles() -> void:
+	_clear_old_handles()
+	var sphere_mesh := _generate_sphere_mesh()
 
 	for i in range(8):
-		var area := Area3D.new()
-		area.name = "CornerHandle_%d" % i
+		var mesh_instance := MeshInstance3D.new()
+		mesh_instance.name = "CornerMesh_%d" % i
+		mesh_instance.mesh = sphere_mesh
+		if corner_material:
+			mesh_instance.material_override = corner_material
 
-		var shape := BoxShape3D.new()
-		shape.size = Vector3.ONE * corner_radius * 2.0
+		add_child(mesh_instance)
+		_corner_handles.append(mesh_instance)
 
-		var col := CollisionShape3D.new()
-		col.shape = shape
-		area.add_child(col)
 
-		add_child(area)
+func _update_corner_meshes() -> void:
+	var sphere_mesh := _generate_sphere_mesh()
+	for mesh_instance in _corner_handles:
+		if is_instance_valid(mesh_instance):
+			mesh_instance.mesh = sphere_mesh
 
-		area.input_ray_pickable = true
-		area.collision_layer = 1
-		area.collision_mask = 1
 
-		_corner_handles.append(area)
+func _generate_sphere_mesh() -> SphereMesh:
+	var sphere := SphereMesh.new()
+	sphere.radius = corner_radius
+	sphere.height = corner_radius * 2.0
+	sphere.radial_segments = corner_segments
+	sphere.rings = corner_segments
+	return sphere
 
 
 func _update_corner_handles() -> void:
 	var corners := get_corners()
-	
 	for i in _corner_handles.size():
-		var handle: Node3D = _corner_handles[i]
-		if is_instance_valid(_corner_handles[i]) and handle.is_inside_tree():
-			_corner_handles[i].global_position = global_transform * corners[i]
+		var mesh_instance := _corner_handles[i]
+		if is_instance_valid(mesh_instance) and mesh_instance.is_inside_tree():
+			mesh_instance.position = corners[i]
 
 
 # ------------------------------------------------------------
-# DRAG API (ADDED - external input driven)
+# DRAG API (2D SCREEN SPACE SELECTION)
 # ------------------------------------------------------------
 
 func is_dragging() -> bool:
@@ -217,23 +224,30 @@ func is_dragging() -> bool:
 func try_start_drag(mouse_pos: Vector2, cam: Camera3D) -> void:
 	if disabled: return
 	
-	var from := cam.project_ray_origin(mouse_pos)
-	var to := from + cam.project_ray_normal(mouse_pos) * 1000.0
-
-	var space := get_world_3d().direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.collide_with_areas = true
-
-	var hit := space.intersect_ray(query)
-	if hit.is_empty():
-		return
-
-	var collider = hit["collider"]
-
+	var closest_index := -1
+	
+	var click_radius_pixels := selection_radius_px
+	var min_distance := click_radius_pixels
+	
 	for i in range(_corner_handles.size()):
-		if collider == _corner_handles[i]:
-			_dragging_corner = i
-			return
+		var handle := _corner_handles[i]
+		if not is_instance_valid(handle) or not handle.is_inside_tree():
+			continue
+			
+		# Skip handles that are physically located behind the camera view plane
+		if cam.is_position_behind(handle.global_position):
+			continue
+			
+		# Unproject the handle's 3D position to 2D screen coordinates
+		var screen_pos := cam.unproject_position(handle.global_position)
+		var distance_to_mouse := mouse_pos.distance_to(screen_pos)
+		
+		if distance_to_mouse < min_distance:
+			min_distance = distance_to_mouse
+			closest_index = i
+			
+	if closest_index != -1:
+		_dragging_corner = closest_index
 
 
 func update_drag(mouse_pos: Vector2, cam: Camera3D) -> void:
@@ -266,19 +280,15 @@ func _set_corner(i: int, p: Vector3) -> void:
 	var max_v := box.position + box.size
 	
 	match i:
-		0:
-			min_v = p
-	
+		0: min_v = p
 		1:
 			min_v.y = p.y
 			min_v.z = p.z
 			max_v.x = p.x
-	
 		2:
 			min_v.z = p.z
 			max_v.x = p.x
 			max_v.y = p.y
-	
 		3:
 			min_v.x = p.x
 			min_v.z = p.z
@@ -291,72 +301,20 @@ func _set_corner(i: int, p: Vector3) -> void:
 			min_v.y = p.y
 			max_v.x = p.x
 			max_v.z = p.z
-		6:
-			max_v = p
+		6: max_v = p
 		7:
 			min_v.x = p.x
 			max_v.y = p.y
 			max_v.z = p.z
 	
-	box = AABB(
-		min_v.min(max_v),
-		(min_v - max_v).abs()
-	)
+	var real_min := min_v.min(max_v)
+	var real_max := min_v.max(max_v)
 	
-	_rebuild()
+	box = AABB(real_min, real_max - real_min)
 
 
 # ------------------------------------------------------------
-# CORNER MESH (UNCHANGED)
-# ------------------------------------------------------------
-
-func _add_corner_mesh(result: ArrayMesh) -> void:
-	var sphere := SphereMesh.new()
-	sphere.radius = corner_radius
-	sphere.height = corner_radius * 2.0
-	sphere.radial_segments = corner_segments
-	sphere.rings = corner_segments
-
-	var arrays := sphere.get_mesh_arrays()
-
-	var src_vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var src_normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-	var src_indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
-
-	var vertices := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var colors := PackedColorArray()
-	var indices := PackedInt32Array()
-
-	var corners := get_corners()
-	var vertex_offset := 0
-
-	for corner in corners:
-		for v in src_vertices:
-			vertices.push_back(v + corner)
-			colors.push_back(corner_color)
-
-		for n in src_normals:
-			normals.push_back(n)
-
-		for idx in src_indices:
-			indices.push_back(idx + vertex_offset)
-
-		vertex_offset += src_vertices.size()
-
-	var mesh_arrays := []
-	mesh_arrays.resize(Mesh.ARRAY_MAX)
-
-	mesh_arrays[Mesh.ARRAY_VERTEX] = vertices
-	mesh_arrays[Mesh.ARRAY_NORMAL] = normals
-	mesh_arrays[Mesh.ARRAY_COLOR] = colors
-	mesh_arrays[Mesh.ARRAY_INDEX] = indices
-
-	result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mesh_arrays)
-
-
-# ------------------------------------------------------------
-# EDGE MESH (UNCHANGED)
+# EDGE MESH
 # ------------------------------------------------------------
 
 func _add_edge_mesh(result: ArrayMesh) -> void:
