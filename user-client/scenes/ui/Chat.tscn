@@ -9,6 +9,11 @@ offset_bottom = 646.0
 size_flags_horizontal = 3
 script = ExtResource("1_pq8so")
 
+[node name="ModelUpateTimer" type="Timer" parent="."]
+wait_time = 0.5
+autostart = true
+ignore_time_scale = true
+
 [node name="Chat" type="VBoxContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -53,6 +58,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 placeholder_text = "Type here ..."
+wrap_mode = 1
 
 [node name="Tools" type="HBoxContainer" parent="Chat/MarginContainer/ChatBox"]
 layout_mode = 2
@@ -61,13 +67,7 @@ size_flags_horizontal = 8
 [node name="ModelButton" type="OptionButton" parent="Chat/MarginContainer/ChatBox/Tools"]
 unique_name_in_owner = true
 layout_mode = 2
-selected = 0
 fit_to_longest_item = false
-item_count = 2
-popup/item_0/text = "Model"
-popup/item_0/id = 0
-popup/item_1/text = "Long Model Name"
-popup/item_1/id = 1
 
 [node name="SendButton" type="Button" parent="Chat/MarginContainer/ChatBox/Tools"]
 custom_minimum_size = Vector2(25, 25)
@@ -75,6 +75,7 @@ layout_mode = 2
 icon = ExtResource("2_pq8so")
 expand_icon = true
 
+[connection signal="timeout" from="ModelUpateTimer" to="." method="_on_model_upate_timer_timeout"]
 [connection signal="gui_input" from="Chat/MarginContainer/ChatBox/ChatBox" to="." method="_on_chat_box_gui_input"]
 [connection signal="item_selected" from="Chat/MarginContainer/ChatBox/Tools/ModelButton" to="." method="_on_model_button_item_selected"]
 [connection signal="pressed" from="Chat/MarginContainer/ChatBox/Tools/SendButton" to="." method="_on_send_button_pressed"]

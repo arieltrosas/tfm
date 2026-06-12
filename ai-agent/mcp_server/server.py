@@ -108,6 +108,65 @@ def estimate_crack_volume(file_path: str, aabb: AABB) -> float:
     return float(crack_volume)
 
 
+def get_crack_aabb(
+    file_path: str, 
+    knn: int = 30, 
+    curvature_threshold: float = 0.05,
+    eps: float = 0.05,
+    min_points: int = 10
+) -> AABB | None:
+    input_path = Path(file_path)
+
+    # 1. Load the point cloud
+    pcd = o3d.io.read_point_cloud(input_path)
+    if pcd.is_empty():
+        raise ValueError(f"Could not load point cloud from {str(input_path)}")
+
+    # 2. Estimate the covariance matrix
+    search_param = o3d.geometry.KDTreeSearchParamKNN(knn=knn)
+    pcd.estimate_covariances(search_param)
+
+    # 3. Extract covariances and compute eigenvalues
+    covariances = np.asarray(pcd.covariances)
+    eigenvalues = np.linalg.eigvalsh(covariances)
+
+    # 4. Calculate Surface Variation (Curvature)
+    curvature = eigenvalues[:, 0] / (np.sum(eigenvalues, axis=1) + 1e-6)
+
+    # 5. Filter points with "stronger" curvature
+    crack_indices = np.where(curvature > curvature_threshold)[0]
+    if len(crack_indices) == 0:
+        return None
+    
+    crack_pcd = pcd.select_by_index(crack_indices) # pyright: ignore
+
+    # 6. Clean up noise using DBSCAN clustering
+    labels = np.array(crack_pcd.cluster_dbscan(eps=eps, min_points=min_points, print_progress=False))
+    valid_labels = labels[labels >= 0]
+    
+    if len(valid_labels) == 0:
+        return None
+
+    # Keep the largest cluster
+    largest_cluster_idx = np.argmax(np.bincount(valid_labels))
+    final_crack_pcd = crack_pcd.select_by_index(np.where(labels == largest_cluster_idx)[0]) # pyright: ignore
+
+    # 7. Compute the Open3D AABB
+    o3d_aabb = final_crack_pcd.get_axis_aligned_bounding_box()
+
+    # 8. Extract geometric properties and map to the Pydantic model
+    min_bound = np.array(o3d_aabb.get_min_bound())
+    extent = np.array(o3d_aabb.get_extent())
+
+    return AABB(
+        x=float(min_bound[0]),
+        y=float(min_bound[1]),
+        z=float(min_bound[2]),
+        w=float(extent[0]),
+        h=float(extent[1]),
+        d=float(extent[2])
+    )
+
 # -----------------------------------------------------------------------------
 # API Endpoints
 
@@ -192,6 +251,16 @@ async def api_volume_set(volume: AABB | None=None) -> None:
 
 # -----------------------------------------------------------------------------
 # MCP Server Tools
+
+@mcp.tool()
+async def get_app_state() -> dict:
+    """
+    Fetch the entire centralized application state (AppState). 
+    Provides metadata about the current workspace directory path, active workspace filenames, and selection volume.
+    """
+    state_data = await api_state()
+    return state_data.model_dump()
+
 
 @mcp.tool()
 async def get_mcp_server_version() -> str:
@@ -279,3 +348,45 @@ async def compute_cavity_volume(input_file: str, aabb: AABB) -> float:
         raise FileNotFoundError(f"File '{input_file}' not found")
 
     return estimate_crack_volume(str(input_path), aabb)
+
+
+@mcp.tool()
+async def find_crack(
+    input_file: str,
+    knn: int = 30,
+    curvature_threshold: float = 0.05,
+    eps: float = 0.05,
+    min_points: int = 10
+) -> AABB | None:
+    """
+    Analyzes a point cloud file in the workspace to locate a crack based on surface curvature.
+    Returns the Axis-Aligned Bounding Box (AABB) surrounding the identified crack, or None if no crack is found.
+
+    Args:
+        input_file (str): The filename of the point cloud in the workspace.
+        knn (int): Number of nearest neighbors for covariance estimation (higher = wider search area).
+        curvature_threshold (float): Threshold to isolate high curvature points.
+        eps (float): DBSCAN clustering distance parameter for noise removal.
+        min_points (int): Minimum points for a cluster to be considered valid.
+
+    Returns:
+        AABB | None: The bounding box of the crack, or None if nothing passed the thresholds.
+    """
+    # 1. Fetch the workspace path
+    response = await api_workspace()
+    ws_path = Path(response.ws_path)
+
+    # 2. Resolve the full path
+    input_path = ws_path / input_file
+
+    if not input_path.is_file():
+        raise FileNotFoundError(f"File '{input_file}' not found in workspace.")
+
+    # 3. Execute the internal geometric processing function
+    return get_crack_aabb(
+        file_path=str(input_path),
+        knn=knn,
+        curvature_threshold=curvature_threshold,
+        eps=eps,
+        min_points=min_points
+    )

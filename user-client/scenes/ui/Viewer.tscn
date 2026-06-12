@@ -206,6 +206,7 @@ size = 5.0
 script = ExtResource("4_l83dn")
 
 [connection signal="timeout" from="ViewerUpdateTimer" to="." method="_on_viewer_update_timer_timeout"]
+[connection signal="volume_changed" from="EditorWorld/VolumeGizmo" to="." method="_on_volume_gizmo_volume_changed"]
 [connection signal="value_changed" from="VBoxContainer/ToolBar/HBoxContainer/PointSizeSlider" to="." method="_on_point_size_slider_value_changed"]
 [connection signal="toggled" from="VBoxContainer/ToolBar/HBoxContainer/VolumeSelectToggle" to="." method="_on_volume_select_toggle_toggled"]
 [connection signal="gui_input" from="VBoxContainer/Viewport/HSplitContainer/SubViewportContainerA" to="." method="_on_sub_viewport_container_a_gui_input"]

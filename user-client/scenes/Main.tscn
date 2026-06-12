@@ -100,7 +100,7 @@ alignment = 1
 
 [node name="HostInput" type="LineEdit" parent="AuthPopup/MarginContainer/VBoxContainer/VBoxContainer"]
 layout_mode = 2
-placeholder_text = "Ollama Host: 127.0.0.1:11434"
+placeholder_text = "LLM Provider: https://opencode.ai/zen/v1/"
 alignment = 1
 
 [node name="KeyInput" type="LineEdit" parent="AuthPopup/MarginContainer/VBoxContainer/VBoxContainer"]

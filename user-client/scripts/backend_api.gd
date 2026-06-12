@@ -124,9 +124,40 @@ func volume_set(aabb: Variant) -> bool:
 	return true
 
 
-func auth(host: String, key: String) -> bool:
-	var endpoint = "/auth"
-	var response = await _send_request(endpoint, HTTPClient.METHOD_POST, JSON.stringify({"host": host, "key": key}))
+func connect_ollama(host: String = "", key: String = "") -> bool:
+	var endpoint = "/connect/ollama"
+	
+	var body = {}
+	if host != "":
+		body["host"] = host
+	if key != "":
+		body["key"] = key
+		
+	var response = await _send_request(
+		endpoint, 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify(body)
+	)
+	
+	if _backend_error(response):
+		_print_backend_error(endpoint, response)
+		return false
+	
+	return true
+
+
+func connect_openai(base_url: String, api_key: String) -> bool:
+	var endpoint = "/connect/openai"
+	var body = {
+		"base_url": base_url,
+		"api_key": api_key
+	}
+	
+	var response = await _send_request(
+		endpoint, 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify(body)
+	)
 	
 	if _backend_error(response):
 		_print_backend_error(endpoint, response)

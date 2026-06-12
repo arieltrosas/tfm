@@ -26,11 +26,25 @@ func _on_auth_popup_accept_pressed() -> void:
 	
 	key_edit.text = ""
 	
-	var info
-	if await BackendAPI.auth(host, key):
-		info = "Succesfully connected to: %s" % host
+	var info = ""
+	
+	if not host:
+		var success = await BackendAPI.connect_ollama("", "")
+		if success:
+			info = "Successfully connected to local Ollama instance."
+		else:
+			info = "Failed to connect to local Ollama instance."
 	else:
-		info = "Error connecting to: %s" % host
+		var success = await BackendAPI.connect_openai(host, key)
+		
+		if success:
+			info = "Successfully connected to OpenAI-compatible host."
+		else:
+			var fallback_success = await BackendAPI.connect_ollama("", "")
+			if fallback_success:
+				info = "Failed to connect to OpenAI host. Fell back to local Ollama instance."
+			else:
+				info = "Failed to connect to OpenAI host, and local Ollama fallback failed."
 	
 	%InfoPopup.get_node("MarginContainer/VBoxContainer/Label").text = info
 	

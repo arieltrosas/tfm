@@ -15,7 +15,20 @@ class AABB(BaseModel):
 
 class AppState(BaseModel):
     workspace_dir: str
+    files: list[str]
     selected_volume: AABB | None
+
+
+# --- Connection Endpoints Schemas ---
+
+class ConnectOllamaRequest(BaseModel):
+    host: str | None = None
+    key: str | None = None
+
+
+class ConnectOpenAIRequest(BaseModel):
+    base_url: str
+    api_key: str
 
 
 # --- Volume Endpoints Schemas ---
@@ -28,7 +41,7 @@ class VolumeSetRequest(BaseModel):
     volume: AABB | None
 
 
-# --- Chat & Auth Endpoints Schemas ---
+# --- Chat Endpoints Schemas ---
 
 class ChatRequest(BaseModel):
     query: str
@@ -38,10 +51,7 @@ class ChatResponse(BaseModel):
     response: str
 
 
-class AuthRequest(BaseModel):
-    host: str
-    key: str
-
+# --- Healthcheck Endpoints Schemas ---
 
 class HealthResponse(BaseModel):
     status: str

@@ -218,7 +218,7 @@ func _update_corner_handles() -> void:
 # ------------------------------------------------------------
 
 func is_dragging() -> bool:
-	return _dragging_corner != -1 or disabled
+	return _dragging_corner != -1 and not disabled
 
 
 func try_start_drag(mouse_pos: Vector2, cam: Camera3D) -> void:

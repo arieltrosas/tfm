@@ -18,7 +18,6 @@ from common.types import (
     VolumeSetRequest,
     ChatRequest,
     ChatResponse,
-    AuthRequest,
     HealthResponse,
     WorkspaceResponse,
     WorkspaceFilesResponse,
@@ -29,6 +28,8 @@ from common.types import (
     ModelResponse,
     ModelListResponse,
     ModelSetRequest,
+    ConnectOllamaRequest,
+    ConnectOpenAIRequest,
 )
 
 # -----------------------------------------------------------------------------
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     # 2. Initialize the centralized AppState object
     app.state.app_state = AppState(
         workspace_dir=ws_path,
+        files=[],
         selected_volume=None
     )
 
@@ -64,6 +66,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/state", response_model=AppState)
 async def get_app_state():
+    # Dynamically pull current workspace files to ensure source of truth accuracy
+    ws_path = Path(app.state.app_state.workspace_dir)
+    app.state.app_state.files = [path.name for path in ws_path.iterdir() if path.is_file()]
     return app.state.app_state
 
 
@@ -97,16 +102,24 @@ async def chat(request: ChatRequest):
 
 
 # -----------------------------------------------------------------------------
-# Auth Endpoint
+# Connect Endpoint
 
-@app.post("/auth")
-async def auth(request: AuthRequest):
+@app.post("/connect/ollama")
+async def connect_ollama(request: ConnectOllamaRequest):
     try:
         await mcp_client.connect_ollama_client(host=request.host, key=request.key)
-    except OllamaClientAuthError:
-        raise HTTPException(status_code=401, detail="Could not authenticate to Ollama")
+        return {"status": "connected to ollama"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/connect/openai")
+async def connect_openai(request: ConnectOpenAIRequest):
+    try:
+        await mcp_client.connect_openai_client(base_url=request.base_url, api_key=request.api_key)
+        return {"status": "connected to openai"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -----------------------------------------------------------------------------

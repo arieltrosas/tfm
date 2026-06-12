@@ -4,7 +4,7 @@ const ChatUserMsgScn = preload("res://scenes/ui/ChatUserMsg.tscn")
 const ChatEngineMsgScn = preload("res://scenes/ui/ChatEngineMsg.tscn")
 
 var server_thinking: bool = false
-var available_models: Array[String]
+var available_models: Array[String] = []
 
 
 func _ready() -> void:
@@ -59,15 +59,43 @@ func _on_chat_box_gui_input(event: InputEvent) -> void:
 
 
 func _update_models_button() -> void:
-	var models = await BackendAPI.model_list()
+	# 1. Fetch the latest models from the API
+	var new_models: Array[String] = []
+	for m in await BackendAPI.model_list():
+		new_models.append(str(m))
+	
+	# 2. Check if the backend list actually changed
+	if _are_arrays_equal(available_models, new_models):
+		return # No changes detected; bail out early to preserve current selection
+	
+	# 3. Update internal storage and rebuild the OptionButton items
+	available_models = new_models
 	
 	%ModelButton.clear()
-	for model in models:
+	for model in available_models:
 		%ModelButton.add_item(model)
 	
-	%ModelButton.selected = models.find(await BackendAPI.model())
+	# 4. Sync UI selection with current active backend model
+	var current_backend_model = await BackendAPI.model()
+	%ModelButton.selected = available_models.find(current_backend_model)
 
 
 func _on_model_button_item_selected(index: int) -> void:
 	if not await BackendAPI.model_set(%ModelButton.get_item_text(index)):
 		%ModelButton.selected = -1
+
+
+func _on_model_upate_timer_timeout() -> void:
+	_update_models_button()
+
+
+# Helper function to check if two typed arrays match exactly in size and order
+func _are_arrays_equal(arr1: Array[String], arr2: Array[String]) -> bool:
+	if arr1.size() != arr2.size():
+		return false
+	
+	for i in range(arr1.size()):
+		if arr1[i] != arr2[i]:
+			return false
+			
+	return true
