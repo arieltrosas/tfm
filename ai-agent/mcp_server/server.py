@@ -1,11 +1,13 @@
 # mcp_server/server.py
 import os
 import sys
+import time
 import httpx
 import open3d as o3d
 import numpy as np
-
+from scipy import ndimage
 from pathlib import Path
+from typing import Tuple, cast
 from mcp.server.fastmcp import FastMCP
 
 from common.types import (
@@ -25,90 +27,104 @@ from common.types import (
 # Global Scope
 
 MCP_LOCAL_API_URL = os.environ["MCP_LOCAL_API_URL"]
-
 __version__ = '0.1.0'
-
 mcp = FastMCP("geometry-server")
 
 
 # -----------------------------------------------------------------------------
 # Pure Geometric Processing Engine
 
-def estimate_crack_volume(file_path: str, aabb: AABB) -> float:
-    path = Path(file_path)
+def estimate_cavity_volume_at_resolution(
+    scene: o3d.t.geometry.RaycastingScene,
+    aabb: AABB,
+    resolution: float,
+) -> float:
+    min_bound = np.array([aabb.x, aabb.y, aabb.z])
+    max_bound = np.array([aabb.x + aabb.w, aabb.y + aabb.h, aabb.z + aabb.d])
 
-    # 1. Load the PLY mesh model
-    mesh = o3d.io.read_triangle_mesh(Path(path))
+    x_coords = np.arange(min_bound[0] - resolution, max_bound[0] + resolution, resolution)
+    y_coords = np.arange(min_bound[1] - resolution, max_bound[1] + resolution, resolution)
+    z_coords = np.arange(min_bound[2] - resolution, max_bound[2] + resolution, resolution)
+
+    if len(x_coords) <= 2 or len(y_coords) <= 2 or len(z_coords) <= 2:
+        return 0.0
+
+    grid_x, grid_y, grid_z = np.meshgrid(x_coords, y_coords, z_coords, indexing="ij")
+    query_points = np.stack([grid_x, grid_y, grid_z], axis=-1).astype(np.float32)
+    grid_shape = query_points.shape[:-1]
+
+    query_points_flattened = query_points.reshape(-1, 3)
+    query_tensor = o3d.core.Tensor(query_points_flattened)
+
+    occupancy_flat = scene.compute_occupancy(query_tensor).numpy()
+    is_wall = occupancy_flat.reshape(grid_shape) > 0.5
+
+    air_mask = ~is_wall
+    structure = ndimage.generate_binary_structure(3, 1)
+    
+    try:
+        labeled_mask, _ = cast(
+            Tuple[np.ndarray, int], ndimage.label(air_mask, structure=structure)
+        )
+    except Exception as e:
+        raise RuntimeError(f"SciPy 3D labeling operation failed: {e}")
+
+    outside_label = labeled_mask[0, 0, 0]
+    is_cavity = air_mask & (labeled_mask != outside_label) & (labeled_mask > 0)
+
+    cavity_voxel_count = int(np.sum(is_cavity))
+    voxel_volume = resolution**3
+    
+    return float(cavity_voxel_count * voxel_volume)
+
+
+def find_converged_cavity_volume(
+    file_path: str,
+    aabb: AABB,
+    start_resolution: float = 4.0,
+    step_factor: float = 0.7,
+    tolerance: float = 0.03,
+    min_resolution_floor: float = 0.04,
+) -> float:
+    path = Path(file_path)
+    mesh = o3d.io.read_triangle_mesh(path)
     if not mesh.has_triangles():
         raise ValueError(f"The file '{file_path}' does not contain a valid triangle mesh.")
 
-    # Pre-cleaning
     mesh.remove_unreferenced_vertices()
     mesh.remove_degenerate_triangles()
     mesh.remove_duplicated_triangles()
     mesh.remove_duplicated_vertices()
     mesh.remove_non_manifold_edges()
 
-    # 2. Set bounds
-    min_bound = np.array([aabb.x, aabb.y, aabb.z])
-    max_bound = np.array([aabb.x + aabb.w, aabb.y + aabb.h, aabb.z + aabb.d])
+    scene = o3d.t.geometry.RaycastingScene()
+    mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+    _ = scene.add_triangles(mesh_t)
+    
+    current_res = start_resolution
+    prev_volume = -1.0
 
-    # 3. Check for aabb containing the whole mesh
-    mesh_min = mesh.get_min_bound()
-    mesh_max = mesh.get_max_bound()
+    while current_res >= min_resolution_floor:
+        current_volume = estimate_cavity_volume_at_resolution(scene, aabb, current_res)
+        
+        if prev_volume >= 0.0:
+            if prev_volume == 0.0:
+                variance = float("inf") if current_volume > 0.0 else 0.0
+            else:
+                variance = abs(current_volume - prev_volume) / prev_volume
+        else:
+            variance = float("inf")
 
-    # If the mesh is completely inside the cutting box, the intersection IS the mesh.
-    if np.all(mesh_min >= min_bound) and np.all(mesh_max <= max_bound):
-        intersected_mesh = mesh
-    else:
-        epsilon = 1e-5
-        min_bound -= epsilon
-        max_bound += epsilon
+        if variance <= tolerance and current_volume > 0.0 and prev_volume > 0.0:
+            return current_volume
 
-        box_size = max_bound - min_bound
-        cutting_box = o3d.geometry.TriangleMesh.create_box(
-            width=box_size[0], height=box_size[1], depth=box_size[2]
-        )
-        cutting_box.translate(min_bound) # pyright: ignore
+        prev_volume = current_volume
+        current_res *= step_factor
 
-        mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
-        box_t = o3d.t.geometry.TriangleMesh.from_legacy(cutting_box)
-
-        intersected_mesh_t = mesh_t.boolean_intersection(box_t)
-        intersected_mesh = intersected_mesh_t.to_legacy()
-
-        if len(intersected_mesh.triangles) == 0:
-            raise ValueError("Boolean intersection resulted in 0 triangles. Verify your bounding box coordinates.")
-
-    # 4. Sanitize the intersection 
-    intersected_mesh.remove_duplicated_vertices()
-    intersected_mesh.remove_duplicated_triangles()
-    intersected_mesh.remove_degenerate_triangles()
-    intersected_mesh.remove_unreferenced_vertices()
-
-    # 5. Ensure mesh is closed
-    if not intersected_mesh.is_watertight():
-        t_repair = o3d.t.geometry.TriangleMesh.from_legacy(intersected_mesh)
-        intersected_mesh = t_repair.fill_holes(hole_size=1e9).to_legacy()
-
-    if not intersected_mesh.is_watertight():
-        raise RuntimeError("Mesh slice is not closed and could not be repaired. Open3D cannot compute its inner volume.")
-
-    # 6. Compute Convex Hull
-    hull_mesh, _ = intersected_mesh.compute_convex_hull()
-
-    # 7. Compute Volumes
-    intersected_mesh.orient_triangles()
-    hull_mesh.orient_triangles()
-
-    model_volume = intersected_mesh.get_volume()
-    hull_volume = hull_mesh.get_volume()
-
-    crack_volume = hull_volume - model_volume
-    return float(crack_volume)
+    return prev_volume
 
 
-def get_crack_aabb(
+def find_cavity_aabb(
     file_path: str, 
     knn: int = 30, 
     curvature_threshold: float = 0.05,
@@ -117,44 +133,35 @@ def get_crack_aabb(
 ) -> AABB | None:
     input_path = Path(file_path)
 
-    # 1. Load the point cloud
     pcd = o3d.io.read_point_cloud(input_path)
     if pcd.is_empty():
         raise ValueError(f"Could not load point cloud from {str(input_path)}")
 
-    # 2. Estimate the covariance matrix
     search_param = o3d.geometry.KDTreeSearchParamKNN(knn=knn)
     pcd.estimate_covariances(search_param)
 
-    # 3. Extract covariances and compute eigenvalues
     covariances = np.asarray(pcd.covariances)
     eigenvalues = np.linalg.eigvalsh(covariances)
 
-    # 4. Calculate Surface Variation (Curvature)
     curvature = eigenvalues[:, 0] / (np.sum(eigenvalues, axis=1) + 1e-6)
 
-    # 5. Filter points with "stronger" curvature
     crack_indices = np.where(curvature > curvature_threshold)[0]
     if len(crack_indices) == 0:
         return None
     
     crack_pcd = pcd.select_by_index(crack_indices) # pyright: ignore
 
-    # 6. Clean up noise using DBSCAN clustering
     labels = np.array(crack_pcd.cluster_dbscan(eps=eps, min_points=min_points, print_progress=False))
     valid_labels = labels[labels >= 0]
     
     if len(valid_labels) == 0:
         return None
 
-    # Keep the largest cluster
     largest_cluster_idx = np.argmax(np.bincount(valid_labels))
     final_crack_pcd = crack_pcd.select_by_index(np.where(labels == largest_cluster_idx)[0]) # pyright: ignore
 
-    # 7. Compute the Open3D AABB
     o3d_aabb = final_crack_pcd.get_axis_aligned_bounding_box()
 
-    # 8. Extract geometric properties and map to the Pydantic model
     min_bound = np.array(o3d_aabb.get_min_bound())
     extent = np.array(o3d_aabb.get_extent())
 
@@ -167,11 +174,11 @@ def get_crack_aabb(
         d=float(extent[2])
     )
 
+
 # -----------------------------------------------------------------------------
 # API Endpoints
 
 async def api_state() -> AppState:
-    """Query the local API to get the entire centralized AppState."""
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{MCP_LOCAL_API_URL}/state")
         response.raise_for_status()
@@ -179,7 +186,6 @@ async def api_state() -> AppState:
 
 
 async def api_workspace() -> WorkspaceResponse:
-    """Query the local API to get workspace metadata."""
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{MCP_LOCAL_API_URL}/workspace")
         response.raise_for_status()
@@ -187,7 +193,6 @@ async def api_workspace() -> WorkspaceResponse:
 
 
 async def api_workspace_files() -> WorkspaceFilesResponse:
-    """Query the local API to get the list of workspace files."""
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{MCP_LOCAL_API_URL}/workspace/files")
         response.raise_for_status()
@@ -195,7 +200,6 @@ async def api_workspace_files() -> WorkspaceFilesResponse:
 
 
 async def api_workspace_upload(file_path: str) -> WorkspaceUploadResponse:
-    """Query the local API to copy/upload a local file into the workspace directory."""
     payload = WorkspaceUploadRequest(file_path=file_path)
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -207,7 +211,6 @@ async def api_workspace_upload(file_path: str) -> WorkspaceUploadResponse:
 
 
 async def api_workspace_remove(file_name: str) -> None:
-    """Query the local API to delete a specific file from the workspace directory."""
     payload = WorkspaceRemoveRequest(file_name=file_name)
     async with httpx.AsyncClient() as client:
         response = await client.request(
@@ -219,7 +222,6 @@ async def api_workspace_remove(file_name: str) -> None:
 
 
 async def api_workspace_download(file_name: str, download_path: str) -> None:
-    """Query the local API to copy/download a file from the workspace directory to an external destination."""
     payload = WorkspaceDownloadRequest(file_name=file_name, download_path=download_path)
     async with httpx.AsyncClient() as client:
         response = await client.request(
@@ -231,7 +233,6 @@ async def api_workspace_download(file_name: str, download_path: str) -> None:
 
 
 async def api_volume_get() -> VolumeGetResponse:
-    """Query the local API to get the currently selected single AABB volume configuration."""
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{MCP_LOCAL_API_URL}/volume/get")
         response.raise_for_status()
@@ -239,7 +240,6 @@ async def api_volume_get() -> VolumeGetResponse:
 
 
 async def api_volume_set(volume: AABB | None=None) -> None:
-    """Query the local API to overwrite or clear the current active configuration volume."""
     payload = VolumeSetRequest(volume=volume)
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -328,30 +328,51 @@ async def set_selection_volume(
 
 
 @mcp.tool()
-async def compute_cavity_volume(input_file: str, aabb: AABB) -> float:
+async def compute_cavity_volume(
+    input_file: str, 
+    aabb: AABB, 
+    start_resolution: float = 4.0,
+    step_factor: float = 0.7,
+    tolerance: float = 0.03,
+    min_resolution_floor: float = 0.04
+) -> float:
     """
-    Calculate the volume of a cavity of a file in the workspace in a specific area.
+    Calculate the stable, converged volume of an internal cavity using automated multi-resolution grid scaling.
+
+    This tool progressively builds fine-grained 3D grids inside the targeted AABB bounding box and calculates 
+    occupancy using a single-setup Open3D raycasting scene. It analyzes the variance of the calculated volumes 
+    between steps, stopping once the delta drops below the specified tolerance or hits the minimum resolution floor.
 
     Args:
-        input_file (str): Input filename of the target file in the workspace.
-        aabb (AABB): Area to restrict the estimation, usually set by the user.
+        input_file (str): Input filename of the target mesh file in the workspace.
+        aabb (AABB): Area to restrict the volume estimation loop.
+        start_resolution (float): Coarse initial voxel dimension to kick off scanning.
+        step_factor (float): Multiplier used to shrink the voxel size on each subsequent evaluation step.
+        tolerance (float): Percentage variance threshold (e.g. 0.03 = 3%) under which calculation is considered stable.
+        min_resolution_floor (float): Hard voxel size floor to ensure processing caps out cleanly.
 
     Returns:
-        float: The estimated cavity volume.
+        float: The final converged cavity volume calculation.
     """
     response = await api_workspace()
     ws_path = Path(response.ws_path)
-
     input_path = ws_path / input_file
 
     if not input_path.is_file():
         raise FileNotFoundError(f"File '{input_file}' not found")
 
-    return estimate_crack_volume(str(input_path), aabb)
+    return find_converged_cavity_volume(
+        file_path=str(input_path),
+        aabb=aabb,
+        start_resolution=start_resolution,
+        step_factor=step_factor,
+        tolerance=tolerance,
+        min_resolution_floor=min_resolution_floor
+    )
 
 
 @mcp.tool()
-async def find_crack(
+async def find_cavity_with_curvature(
     input_file: str,
     knn: int = 30,
     curvature_threshold: float = 0.05,
@@ -359,7 +380,7 @@ async def find_crack(
     min_points: int = 10
 ) -> AABB | None:
     """
-    Analyzes a point cloud file in the workspace to locate a crack based on surface curvature.
+    Analyzes a file in the workspace to locate a crack based on surface curvature.
     Returns the Axis-Aligned Bounding Box (AABB) surrounding the identified crack, or None if no crack is found.
 
     Args:
@@ -372,18 +393,14 @@ async def find_crack(
     Returns:
         AABB | None: The bounding box of the crack, or None if nothing passed the thresholds.
     """
-    # 1. Fetch the workspace path
     response = await api_workspace()
     ws_path = Path(response.ws_path)
-
-    # 2. Resolve the full path
     input_path = ws_path / input_file
 
     if not input_path.is_file():
         raise FileNotFoundError(f"File '{input_file}' not found in workspace.")
 
-    # 3. Execute the internal geometric processing function
-    return get_crack_aabb(
+    return find_cavity_aabb(
         file_path=str(input_path),
         knn=knn,
         curvature_threshold=curvature_threshold,

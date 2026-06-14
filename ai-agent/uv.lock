@@ -37,6 +37,7 @@ dependencies = [
     { name = "pybind11-stubgen" },
     { name = "pyinstaller" },
     { name = "python-dotenv" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
@@ -51,6 +52,7 @@ requires-dist = [
     { name = "pybind11-stubgen", specifier = ">=2.5.5" },
     { name = "pyinstaller", specifier = ">=6.20.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "scipy", specifier = ">=1.17.0" },
 ]
 
 [[package]]
