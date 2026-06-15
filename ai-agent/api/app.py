@@ -18,8 +18,6 @@ async def lifespan(app: FastAPI):
     state_service = StateService(workspace, event_bus)
     mcp_client = MCPClient()
 
-    print(f"MCP Workspace physical directory created at '{workspace.root}'")
-
     app.state.services = AppServices(
         workspace=workspace,
         state=state_service,
