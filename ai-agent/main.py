@@ -8,7 +8,6 @@ import asyncio
 async def _try_connect_mcp_server(mcp_client) -> None:
     try:
         await mcp_client.connect_mcp_server()
-        print("MCP server connected.")
     except Exception as e:
         print(f"Warning: MCP server failed to initialize: {e}")
         print("FastAPI will continue without LLM agent tools.")
@@ -57,7 +56,6 @@ def run_mcp_client(port_file: str | None):
                 print(f"Warning: Could not write to port file: {e}")
 
         os.environ["MCP_LOCAL_API_URL"] = f"http://127.0.0.1:{actual_port}"
-        print(f"API Live! Exposed environment variable: MCP_LOCAL_API_URL={os.environ['MCP_LOCAL_API_URL']}")
 
         try:
             await _try_connect_mcp_server(mcp_client)
