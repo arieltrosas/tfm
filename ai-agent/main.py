@@ -48,11 +48,11 @@ def run_mcp_client(port_file: str | None):
 
         # 2. Wrap client components lifecycle in a try/finally block within the same task context
         try:
-            await mcp_client.connect_ollama_client()
-            models = await mcp_client.list_models()
-            if models:
-                mcp_client.model = models[0]
-
+            # await mcp_client.connect_ollama_client()
+            # models = await mcp_client.list_models()
+            # if models:
+            #     mcp_client.model = models[0]
+            #
             await mcp_client.connect_mcp_server()
             
             # Keep this task context alive until Uvicorn winds down
