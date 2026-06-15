@@ -27,9 +27,11 @@ var _updating_from_backend: bool = false
 
 func _ready() -> void:
 	BackendAPI.backend_ready.connect(BackendAPI.volume_set.bind(%VolumeGizmo.box))
+	BackendAPI.volume_changed.connect(_on_volume_changed)
+	BackendAPI.app_state_changed.connect(_on_app_state_changed)
 	await get_tree().process_frame
 	_sync_worlds()
-	_update_viewer()
+	_update_objects()
 
 
 func _sync_worlds() -> void:
@@ -37,15 +39,34 @@ func _sync_worlds() -> void:
 	if world_3d == null:
 		push_error("Editor world has no World3D")
 		return
-	
+
 	for vp in viewports.values():
 		var _old_world = vp.world_3d # this avoids a godot memory management bug, nothing important, but suppressed the error
 		vp.world_3d = world_3d
 
 
-func _update_viewer() -> void:
-	_update_objects()
-	await _update_volume_selection()
+func _on_volume_changed(volume: Variant) -> void:
+	_apply_volume_from_backend(volume)
+
+
+func _on_app_state_changed(state: Dictionary) -> void:
+	_apply_volume_from_backend(_parse_volume_from_state(state))
+
+
+func _parse_volume_from_state(state: Dictionary) -> Variant:
+	return BackendAPI.parse_aabb(state.get("selected_volume"))
+
+
+func _apply_volume_from_backend(volume: Variant) -> void:
+	if %VolumeGizmo.is_dragging():
+		return
+
+	_updating_from_backend = true
+
+	if volume is AABB and not %VolumeGizmo.box.is_equal_approx(volume):
+		%VolumeGizmo.box = volume
+
+	_updating_from_backend = false
 
 
 func add_object(object: ViewerObject) -> void:
@@ -72,21 +93,6 @@ func _update_objects() -> void:
 		object.update_object()
 
 
-func _update_volume_selection() -> void:
-	if %VolumeGizmo.is_dragging(): return
-	
-	var volume = await BackendAPI.volume_get()
-	if not volume:
-		return
-	
-	_updating_from_backend = true
-	
-	if not %VolumeGizmo.box.is_equal_approx(volume):
-		%VolumeGizmo.box = volume
-	
-	_updating_from_backend = false
-
-
 func set_point_size(value: float) -> void:
 	point_size = value
 	_update_objects()
@@ -94,10 +100,6 @@ func set_point_size(value: float) -> void:
 
 func _on_point_size_slider_value_changed(value: float) -> void:
 	set_point_size(value)
-
-
-func _on_viewer_update_timer_timeout() -> void:
-	_update_viewer()
 
 
 func _on_subviewport_gui_input(event: InputEvent, viewport_id: String) -> void:
@@ -108,7 +110,7 @@ func _on_subviewport_gui_input(event: InputEvent, viewport_id: String) -> void:
 		return
 
 	camera.handle_editor_input(event)
-	
+
 	if not %VolumeGizmo.disabled:
 		_handle_gizmo_input(event, camera)
 
@@ -144,7 +146,7 @@ func _on_sub_viewport_container_c_gui_input(event: InputEvent) -> void:
 func _on_volume_select_toggle_toggled(toggled_on: bool) -> void:
 	if _updating_from_backend:
 		return
-		
+
 	%VolumeGizmo.visible = toggled_on
 	%VolumeGizmo.disabled = not toggled_on
 
@@ -152,5 +154,5 @@ func _on_volume_select_toggle_toggled(toggled_on: bool) -> void:
 func _on_volume_gizmo_volume_changed(volume: AABB) -> void:
 	if _updating_from_backend:
 		return
-	
+
 	await BackendAPI.volume_set(volume)

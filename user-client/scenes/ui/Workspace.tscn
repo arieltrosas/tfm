@@ -20,11 +20,6 @@ display_mode = 1
 access = 2
 use_native_dialog = true
 
-[node name="WorkspaceRefreshTimer" type="Timer" parent="."]
-unique_name_in_owner = true
-autostart = true
-ignore_time_scale = true
-
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 2
 theme_override_constants/margin_left = 5
@@ -85,7 +80,6 @@ expand_icon = true
 
 [connection signal="item_added" from="." to="." method="_on_item_added"]
 [connection signal="files_selected" from="FileDialog" to="." method="_on_file_dialog_files_selected"]
-[connection signal="timeout" from="WorkspaceRefreshTimer" to="." method="_on_workspace_refresh_timer_timeout"]
 [connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Visualize" to="." method="_on_visualize_pressed"]
 [connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Save" to="." method="_on_save_pressed"]
 [connection signal="pressed" from="MarginContainer/VBoxContainer/ActionBar/Add" to="." method="_on_add_pressed"]

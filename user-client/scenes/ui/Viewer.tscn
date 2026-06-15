@@ -66,10 +66,6 @@ offset_bottom = 600.0
 size_flags_stretch_ratio = 2.0
 script = ExtResource("1_g8q63")
 
-[node name="ViewerUpdateTimer" type="Timer" parent="."]
-autostart = true
-ignore_time_scale = true
-
 [node name="EditorWorld" type="Node3D" parent="."]
 unique_name_in_owner = true
 
@@ -205,7 +201,6 @@ projection = 1
 size = 5.0
 script = ExtResource("4_l83dn")
 
-[connection signal="timeout" from="ViewerUpdateTimer" to="." method="_on_viewer_update_timer_timeout"]
 [connection signal="volume_changed" from="EditorWorld/VolumeGizmo" to="." method="_on_volume_gizmo_volume_changed"]
 [connection signal="value_changed" from="VBoxContainer/ToolBar/HBoxContainer/PointSizeSlider" to="." method="_on_point_size_slider_value_changed"]
 [connection signal="toggled" from="VBoxContainer/ToolBar/HBoxContainer/VolumeSelectToggle" to="." method="_on_volume_select_toggle_toggled"]

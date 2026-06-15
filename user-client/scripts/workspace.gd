@@ -16,68 +16,74 @@ var viewer_objects: Dictionary[StringName, ViewerObject]
 
 func _ready() -> void:
 	%FileDialog.current_dir = OS.get_system_dir(OS.SYSTEM_DIR_DESKTOP)
-	_update_workspace()
+	BackendAPI.workspace_files_changed.connect(_on_workspace_files_changed)
+	BackendAPI.app_state_changed.connect(_on_app_state_changed)
 
 
-func _update_workspace() -> void:
-	%WorkspaceRefreshTimer.stop()
-	
-	var ws_files := await BackendAPI.workspace_files()
-	
+func _on_workspace_files_changed(files: Array) -> void:
+	_sync_from_files(files)
+
+
+func _on_app_state_changed(state: Dictionary) -> void:
+	_sync_from_files(state.get("files", []))
+
+
+func _sync_from_files(files: Array) -> void:
+	var ws_files: Array[StringName] = []
+	for file_name in files:
+		ws_files.append(StringName(file_name))
+
 	for file_id in workspace.keys():
 		if file_id not in ws_files:
 			_remove_item(file_id)
-	
+
 	for file_id in ws_files:
 		if file_id not in workspace:
 			_add_item(file_id)
 		else:
 			_update_item(file_id)
-	
+
 	workspace_updated.emit()
-	%WorkspaceRefreshTimer.start()
 
 
 func _add_item(file_id: StringName) -> void:
 	if not file_id:
 		return
-	
+
 	var item: WorkspaceItem = WorkspaceItemScn.instantiate()
 	item.mesh_button_toggled.connect(_on_workspace_item_mesh_toggled.bind(file_id))
 	item.cloud_button_toggled.connect(_on_workspace_item_cloud_toggled.bind(file_id))
 	item.visible_button_toggled.connect(_on_workspace_item_visible_toggled.bind(file_id))
-	
+
 	item.file_name = ""
 	workspace[file_id] = item
-	
+
 	%ItemList.add_child(item)
-	
-	_update_workspace()
+	_update_item(file_id)
 	item_added.emit(file_id)
 
 
 func _remove_item(file_id: StringName) -> void:
 	if file_id not in workspace:
 		return
-	
+
 	_remove_viewer_object(file_id)
-	
+
 	var item: WorkspaceItem = workspace[file_id]
 	workspace.erase(file_id)
 	%ItemList.remove_child(item)
 	item.queue_free()
-	
-	_update_workspace()
+
 	item_removed.emit(file_id)
 
 
 func _update_item(file_id: StringName) -> void:
 	if file_id not in workspace:
 		return
-	
+
 	var item: WorkspaceItem = workspace[file_id]
 	item.file_name = file_id
-	
+
 	item_updated.emit(file_id)
 
 
@@ -95,32 +101,32 @@ func _get_selected_items() -> Array[StringName]:
 func _add_viewer_object(file_id: StringName) -> void:
 	if file_id in viewer_objects:
 		return
-	
+
 	var ws_path: String = await BackendAPI.workspace()
 	if not ws_path:
 		return
-	
+
 	var path = ws_path.path_join(file_id)
 	if not FileAccess.file_exists(path):
 		return
-	
+
 	var object: ViewerObject = ViewerObjectScn.instantiate()
 	object.source_path = path
 	viewer_objects[file_id] = object
 	viewer_object_added.emit(object)
-	
+
 	workspace[file_id].set_view_mode_toggles_visible(true)
 
 
 func _remove_viewer_object(file_id: StringName) -> void:
 	if file_id not in viewer_objects:
 		return
-	
+
 	var object = viewer_objects[file_id]
 	viewer_objects.erase(file_id)
 	viewer_object_removed.emit(object)
 	object.queue_free()
-	
+
 	workspace[file_id].set_view_mode_toggles_visible(false)
 
 
@@ -133,11 +139,6 @@ func _on_remove_pressed() -> void:
 	var selected = _get_selected_items()
 	for file_id in selected:
 		await BackendAPI.workspace_remove(file_id)
-		_remove_item(file_id)
-
-
-func _on_workspace_refresh_timer_timeout() -> void:
-	_update_workspace()
 
 
 func _on_visualize_pressed() -> void:
@@ -173,7 +174,7 @@ func _on_save_pressed() -> void:
 		%FileDialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 		%FileDialog.current_file = file_name
 		%FileDialog.popup_centered_clamped()
-		
+
 		var dst_path = await %FileDialog.file_selected
 		BackendAPI.workspace_download(file_name, dst_path)
 
@@ -182,8 +183,7 @@ func _on_file_dialog_files_selected(paths: PackedStringArray) -> void:
 	if %FileDialog.file_mode == FileDialog.FILE_MODE_SAVE_FILE:
 		return
 	for path in paths:
-		var file_id: String = await BackendAPI.workspace_upload(path)
-		_add_item(file_id)
+		await BackendAPI.workspace_upload(path)
 
 
 func _on_item_added(file_id: StringName) -> void:
