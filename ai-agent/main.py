@@ -5,6 +5,15 @@ import argparse
 import asyncio
 
 
+async def _try_connect_mcp_server(mcp_client) -> None:
+    try:
+        await mcp_client.connect_mcp_server()
+        print("MCP server connected.")
+    except Exception as e:
+        print(f"Warning: MCP server failed to initialize: {e}")
+        print("FastAPI will continue without LLM agent tools.")
+
+
 def run_mcp_client(port_file: str | None):
     import uvicorn
     from api.app import create_app
@@ -51,12 +60,7 @@ def run_mcp_client(port_file: str | None):
         print(f"API Live! Exposed environment variable: MCP_LOCAL_API_URL={os.environ['MCP_LOCAL_API_URL']}")
 
         try:
-            # await mcp_client.connect_ollama_client()
-            # models = await mcp_client.list_models()
-            # if models:
-            #     mcp_client.model = models[0]
-            #
-            await mcp_client.connect_mcp_server()
+            await _try_connect_mcp_server(mcp_client)
             await server_task
 
         except asyncio.CancelledError:
