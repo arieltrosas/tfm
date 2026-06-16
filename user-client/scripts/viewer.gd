@@ -72,7 +72,6 @@ func _apply_volume_from_backend(volume: Variant) -> void:
 func add_object(object: ViewerObject) -> void:
 	if object in viewer_objects:
 		return
-
 	viewer_objects.append(object)
 	editor_world.add_child(object)
 	_update_objects()

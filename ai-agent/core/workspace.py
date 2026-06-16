@@ -4,6 +4,16 @@ from pathlib import Path
 
 from common.events import AppEvent, AppEventType
 from core.event_bus import EventBus
+from geometry.io import (
+    is_supported_point_cloud_format,
+    is_supported_triangle_mesh_format,
+    read_point_cloud,
+    read_triangle_mesh,
+    write_point_cloud,
+    write_triangle_mesh,
+    convert_point_cloud_to_pcd,
+    convert_mesh_to_glb,
+)
 
 
 class WorkspaceService:
@@ -43,16 +53,27 @@ class WorkspaceService:
         source = Path(source_path)
         if not source.exists():
             raise FileNotFoundError(f"File '{source_path}' not found")
+        
+        def get_target_path(source: Path) -> Path:
+            target = self._root / source.name
+            if target.exists():
+                stem = target.stem
+                n = 0
+                while target.exists():
+                    target = target.with_stem(f"{stem} ({n})")
+                    n += 1
+            return target
 
-        target = self._root / source.name
-        if target.exists():
-            stem = target.stem
-            n = 0
-            while target.exists():
-                target = target.with_stem(f"{stem} ({n})")
-                n += 1
-
-        shutil.copy(source, target)
+        if is_supported_point_cloud_format(source):
+            target = get_target_path(source.with_suffix(".pcd"))
+            convert_point_cloud_to_pcd(source, target)
+        elif is_supported_triangle_mesh_format(source):
+            target = get_target_path(source.with_suffix(".glb"))
+            convert_mesh_to_glb(source, target)
+        else:
+            target = get_target_path(source)
+            shutil.copy(source, target)
+        
         await self._emit_files_changed()
         return target.name
 
@@ -60,7 +81,14 @@ class WorkspaceService:
         path = self.resolve_file(file_name)
         path.unlink()
         await self._emit_files_changed()
-
     async def download(self, file_name: str, download_path: str) -> None:
         src_path = self.resolve_file(file_name)
-        shutil.copy(src_path, Path(download_path))
+        dst_path = Path(download_path)
+
+        if is_supported_point_cloud_format(src_path):
+            write_point_cloud(dst_path, read_point_cloud(src_path))
+        elif is_supported_triangle_mesh_format(src_path):
+            write_triangle_mesh(src_path, read_triangle_mesh(src_path))
+        else:
+            shutil.copy(src_path, Path(download_path))
+
