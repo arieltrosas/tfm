@@ -16,6 +16,8 @@ var _events_active: bool = false
 var _reconnect_scheduled: bool = false
 
 
+## NODE OVERRIDES
+
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 	await _launch_backend()
@@ -49,6 +51,226 @@ func _notification(what: int) -> void:
 			await shutdown()
 		get_tree().quit()
 
+
+## API ENDPOINTS
+
+# app state
+
+func get_app_state() -> Dictionary:
+	var response = await _send_request("/state")
+	if _backend_error(response):
+		_print_backend_error("/state", response)
+		return {}
+	return response["body"]
+
+
+# selection volume
+
+func volume_get() -> Variant:
+	var response = await _send_request("/volume/get")
+	if _backend_error(response):
+		_print_backend_error("/volume/get", response)
+		return null
+	return parse_aabb(response["body"].get("volume"))
+
+
+func volume_set(aabb: Variant) -> bool:
+	var volume_payload = null
+	if aabb is AABB:
+		volume_payload = {
+			"x": aabb.position.x, "y": aabb.position.y, "z": aabb.position.z,
+			"w": aabb.size.x, "h": aabb.size.y, "d": aabb.size.z,
+		}
+	var response = await _send_request("/volume/set", HTTPClient.METHOD_POST, JSON.stringify({"volume": volume_payload}))
+	if _backend_error(response):
+		_print_backend_error("/volume/set", response)
+		return false
+	return true
+
+
+# chat
+
+func chat(msg: String) -> String:
+	var response = await _send_request("/chat", HTTPClient.METHOD_POST, JSON.stringify({"query": msg}))
+	if _backend_error(response):
+		_print_backend_error("/chat", response)
+		return "Something went wrong"
+	return response["body"].get("response", "Something went wrong")
+
+
+# llm connection
+
+func connect_ollama(host: String = "", key: String = "") -> bool:
+	var body := {}
+	if host != "":
+		body["host"] = host
+	if key != "":
+		body["key"] = key
+	var response = await _send_request("/connect/ollama", HTTPClient.METHOD_POST, JSON.stringify(body))
+	if _backend_error(response):
+		_print_backend_error("/connect/ollama", response)
+		return false
+	return true
+
+
+func connect_openai(base_url: String, api_key: String) -> bool:
+	var response = await _send_request(
+		"/connect/openai",
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"base_url": base_url, "api_key": api_key})
+	)
+	if _backend_error(response):
+		_print_backend_error("/connect/openai", response)
+		return false
+	return true
+
+
+# health
+
+func health() -> bool:
+	var response = await _send_request("/health")
+	if _backend_error(response):
+		return false
+	return response["body"].get("status", "") == "healthy"
+
+
+# workspace
+
+func workspace() -> String:
+	var response = await _send_request("/workspace")
+	if _backend_error(response):
+		_print_backend_error("/workspace", response)
+		return ""
+	return response["body"].get("ws_path", "")
+
+
+func workspace_files() -> Array[String]:
+	var response = await _send_request("/workspace/files")
+	if _backend_error(response):
+		_print_backend_error("/workspace/files", response)
+		return []
+	var files: Array[String] = []
+	for entry in response["body"].get("files", []):
+		if entry is Dictionary:
+			files.append(entry.get("name", ""))
+		else:
+			files.append(str(entry))
+	return files
+
+
+func workspace_upload(file_paths: Array[String]) -> Dictionary:
+	var response = await _send_request(
+		"/workspace/upload",
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"file_paths": file_paths})
+	)
+	if _backend_error(response):
+		_print_backend_error("/workspace/upload", response)
+		return {}
+	return response["body"].get("results", {})
+
+
+func workspace_download(file_name: String, download_path: String) -> Dictionary:
+	var payload := {
+		"file_name": file_name,
+		"download_path": download_path
+	}
+	var response = await _send_request(
+		"/workspace/download",
+		HTTPClient.METHOD_POST,
+		JSON.stringify(payload)
+	)
+	if _backend_error(response):
+		_print_backend_error("/workspace/download", response)
+		return {}
+	return response["body"]
+
+
+func workspace_remove(files: Array[String]) -> Dictionary:
+	var response = await _send_request(
+		"/workspace/remove",
+		HTTPClient.METHOD_DELETE,
+		JSON.stringify({"files": files})
+	)
+	if _backend_error(response):
+		_print_backend_error("/workspace/remove", response)
+		return {}
+	return response["body"].get("results", {})
+
+
+# model
+
+func model() -> String:
+	var response = await _send_request("/model")
+	if _backend_error(response):
+		return ""
+	return response["body"].get("model", "")
+
+
+func model_list() -> Array[String]:
+	var response = await _send_request("/model/list")
+	if _backend_error(response):
+		return []
+	var models: Array[String]
+	models.assign(response["body"].get("models", []))
+	return models
+
+
+func model_set(model_name: String) -> bool:
+	var response = await _send_request("/model/set", HTTPClient.METHOD_POST, JSON.stringify({"model": model_name}))
+	if _backend_error(response):
+		return false
+	return true
+
+
+# shutdown
+
+func shutdown() -> void:
+	_stop_event_stream()
+	await _send_request("/shutdown", HTTPClient.METHOD_POST)
+
+
+# geometry
+
+func geometry_mesh_supported(file_path: String) -> bool:
+	var response = await _send_request(
+		"/geometry/mesh/supported", 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify({"file_path": file_path})
+	)
+	if _backend_error(response):
+		_print_backend_error("/geometry/mesh/supported", response)
+		return false
+	return response["body"].get("is_supported", false)
+
+
+func geometry_point_cloud_supported(file_path: String) -> bool:
+	var response = await _send_request(
+		"/geometry/point-cloud/supported", 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify({"file_path": file_path})
+	)
+	if _backend_error(response):
+		_print_backend_error("/geometry/point-cloud/supported", response)
+		return false
+	return response["body"].get("is_supported", false)
+
+
+func geometry_mesh_convert(src_path: String, dst_path: String) -> void:
+	var payload := {
+		"src_path": src_path,
+		"dst_path": dst_path
+	}
+	var response = await _send_request(
+		"/geometry/mesh/convert", 
+		HTTPClient.METHOD_POST, 
+		JSON.stringify(payload)
+	)
+	if _backend_error(response):
+		_print_backend_error("/geometry/mesh/convert", response)
+
+
+## HELPERS
 
 func _launch_backend() -> void:
 	if OS.is_debug_build():
@@ -192,158 +414,6 @@ func _process_sse_block(block: String) -> void:
 
 func _dispatch_event(event: Dictionary) -> void:
 	remote_event.emit(event.get("type", ""), event.get("payload", {}))
-
-
-func get_app_state() -> Dictionary:
-	var response = await _send_request("/state")
-	if _backend_error(response):
-		_print_backend_error("/state", response)
-		return {}
-	return response["body"]
-
-
-func volume_get() -> Variant:
-	var response = await _send_request("/volume/get")
-	if _backend_error(response):
-		_print_backend_error("/volume/get", response)
-		return null
-	return parse_aabb(response["body"].get("volume"))
-
-
-func volume_set(aabb: Variant) -> bool:
-	var volume_payload = null
-	if aabb is AABB:
-		volume_payload = {
-			"x": aabb.position.x, "y": aabb.position.y, "z": aabb.position.z,
-			"w": aabb.size.x, "h": aabb.size.y, "d": aabb.size.z,
-		}
-	var response = await _send_request("/volume/set", HTTPClient.METHOD_POST, JSON.stringify({"volume": volume_payload}))
-	if _backend_error(response):
-		_print_backend_error("/volume/set", response)
-		return false
-	return true
-
-
-func connect_ollama(host: String = "", key: String = "") -> bool:
-	var body := {}
-	if host != "":
-		body["host"] = host
-	if key != "":
-		body["key"] = key
-	var response = await _send_request("/connect/ollama", HTTPClient.METHOD_POST, JSON.stringify(body))
-	if _backend_error(response):
-		_print_backend_error("/connect/ollama", response)
-		return false
-	return true
-
-
-func connect_openai(base_url: String, api_key: String) -> bool:
-	var response = await _send_request(
-		"/connect/openai",
-		HTTPClient.METHOD_POST,
-		JSON.stringify({"base_url": base_url, "api_key": api_key})
-	)
-	if _backend_error(response):
-		_print_backend_error("/connect/openai", response)
-		return false
-	return true
-
-
-func chat(msg: String) -> String:
-	var response = await _send_request("/chat", HTTPClient.METHOD_POST, JSON.stringify({"query": msg}))
-	if _backend_error(response):
-		_print_backend_error("/chat", response)
-		return "Something went wrong"
-	return response["body"].get("response", "Something went wrong")
-
-
-func health() -> bool:
-	var response = await _send_request("/health")
-	if _backend_error(response):
-		return false
-	return response["body"].get("status", "") == "healthy"
-
-
-func workspace() -> String:
-	var response = await _send_request("/workspace")
-	if _backend_error(response):
-		_print_backend_error("/workspace", response)
-		return ""
-	return response["body"].get("ws_path", "")
-
-
-func workspace_files() -> Array[String]:
-	var response = await _send_request("/workspace/files")
-	if _backend_error(response):
-		_print_backend_error("/workspace/files", response)
-		return []
-	var files: Array[String] = []
-	for entry in response["body"].get("files", []):
-		if entry is Dictionary:
-			files.append(entry.get("name", ""))
-		else:
-			files.append(str(entry))
-	return files
-
-
-func workspace_upload(file_path: String) -> String:
-	var response = await _send_request(
-		"/workspace/upload",
-		HTTPClient.METHOD_POST,
-		JSON.stringify({"file_path": file_path})
-	)
-	if _backend_error(response):
-		_print_backend_error("/workspace/upload", response)
-		return ""
-	return response["body"].get("file_name", "")
-
-
-func workspace_remove(file_name: String) -> void:
-	var response = await _send_request(
-		"/workspace/remove",
-		HTTPClient.METHOD_DELETE,
-		JSON.stringify({"file_name": file_name})
-	)
-	if _backend_error(response):
-		_print_backend_error("/workspace/remove", response)
-
-
-func workspace_download(file_name: String, download_path: String) -> void:
-	var response = await _send_request(
-		"/workspace/download",
-		HTTPClient.METHOD_GET,
-		JSON.stringify({"file_name": file_name, "download_path": download_path})
-	)
-	if _backend_error(response):
-		_print_backend_error("/workspace/download", response)
-
-
-func model() -> String:
-	var response = await _send_request("/model")
-	if _backend_error(response):
-		return ""
-	return response["body"].get("model", "")
-
-
-func model_list() -> Array[String]:
-	var response = await _send_request("/model/list")
-	if _backend_error(response):
-		return []
-	var models: Array[String]
-	models.assign(response["body"].get("models", []))
-	return models
-
-
-func model_set(model_name: String) -> bool:
-	var response = await _send_request("/model/set", HTTPClient.METHOD_POST, JSON.stringify({"model": model_name}))
-	if _backend_error(response):
-		return false
-	return true
-
-
-func shutdown() -> void:
-	_stop_event_stream()
-	await _send_request("/shutdown", HTTPClient.METHOD_POST)
 
 
 func _send_request(endpoint: String, method: HTTPClient.Method = HTTPClient.METHOD_GET, body: String = "") -> Dictionary:

@@ -67,20 +67,35 @@ class WorkspaceFilesResponse(BaseModel):
     files: list[str]
 
 
+class FileResult(BaseModel):
+    file_name: str
+    status: str
+    error: str | None = None
+
+
 class WorkspaceUploadRequest(BaseModel):
-    file_path: str
+    file_paths: list[str]
 
 
 class WorkspaceUploadResponse(BaseModel):
-    file_name: str
+    results: dict[str, FileResult]
 
 
 class WorkspaceRemoveRequest(BaseModel):
-    file_name: str
+    files: list[str]
+
+
+class WorkspaceRemoveResponse(BaseModel):
+    results: dict[str, FileResult]
 
 
 class WorkspaceDownloadRequest(BaseModel):
     file_name: str
+    download_path: str
+
+
+class WorkspaceDownloadResponse(BaseModel):
+    result: FileResult
     download_path: str
 
 
@@ -96,3 +111,26 @@ class ModelListResponse(BaseModel):
 
 class ModelSetRequest(BaseModel):
     model: str
+
+
+# --- Geometry Endpoints Schemas ---
+
+class GeometryMeshSupportedRequest(BaseModel):
+    file_path: str
+
+
+class GeometryMeshSupportedResponse(BaseModel):
+    is_supported: bool
+
+
+class GeometryPointCloudSupportedRequest(BaseModel):
+    file_path: str
+
+
+class GeometryPointCloudSupportedResponse(BaseModel):
+    is_supported: bool
+
+
+class GeometryMeshConvertRequest(BaseModel):
+    src_path: str
+    dst_path: str

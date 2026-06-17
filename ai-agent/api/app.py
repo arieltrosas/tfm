@@ -6,9 +6,22 @@ from core.event_bus import EventBus
 from core.services import AppServices
 from core.state import StateService
 from core.workspace import WorkspaceService
+from core.geometry import GeometryService
 from mcp_client.client import MCPClient
 
-from api.routes import chat, connect, events, health, models, shutdown, state, volume, workspace
+from api.routes import (
+    util,
+    chat, 
+    connect, 
+    events, 
+    health, 
+    models, 
+    shutdown, 
+    state, 
+    volume, 
+    workspace, 
+    geometry,
+)
 
 
 @asynccontextmanager
@@ -17,12 +30,14 @@ async def lifespan(app: FastAPI):
     workspace = WorkspaceService(event_bus)
     state_service = StateService(workspace, event_bus)
     mcp_client = MCPClient()
+    geometry = GeometryService()
 
     app.state.services = AppServices(
         workspace=workspace,
         state=state_service,
         events=event_bus,
         mcp_client=mcp_client,
+        geometry=geometry,
     )
 
     yield
@@ -35,6 +50,7 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan)
 
+    app.include_router(util.router)
     app.include_router(state.router)
     app.include_router(volume.router)
     app.include_router(chat.router)
@@ -44,5 +60,6 @@ def create_app() -> FastAPI:
     app.include_router(models.router)
     app.include_router(shutdown.router)
     app.include_router(events.router)
+    app.include_router(geometry.router)
 
     return app

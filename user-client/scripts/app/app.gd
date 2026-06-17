@@ -23,8 +23,8 @@ func _ready() -> void:
 	_chat_service.setup()
 
 	workspace_view.setup(_workspace_service)
-	viewer_view.setup()
 	chat_view.setup(_chat_service)
+	viewer_view.setup()
 
 	if BackendAPI.backend_port > 0:
 		BackendAPI.volume_set(viewer_view.get_gizmo_box())

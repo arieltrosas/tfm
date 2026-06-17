@@ -3,7 +3,7 @@ class_name WorkspaceView extends PanelContainer
 const WorkspaceItemScn = preload("res://scenes/ui/WorkspaceItem.tscn")
 
 var _service: WorkspaceService
-var workspace: Dictionary[StringName, WorkspaceItem] = {}
+var workspace: Dictionary[String, WorkspaceItem] = {}
 
 
 func setup(service: WorkspaceService) -> void:
@@ -24,53 +24,53 @@ func _sync_from_files(files: Array) -> void:
 	for file_name in files:
 		ws_files.append(StringName(str(file_name)))
 
-	for file_id in workspace.keys():
-		if file_id not in ws_files:
-			_remove_item(file_id)
+	for file in workspace.keys():
+		if file not in ws_files:
+			_remove_item(file)
 
-	for file_id in ws_files:
-		if file_id not in workspace:
-			_add_item(file_id)
+	for file in ws_files:
+		if file not in workspace:
+			_add_item(file)
 		else:
-			_update_item(file_id)
+			_update_item(file)
 
 
-func _add_item(file_id: StringName) -> void:
-	if not file_id:
+func _add_item(file: StringName) -> void:
+	if not file:
 		return
 
 	var item: WorkspaceItem = WorkspaceItemScn.instantiate()
 	item.file_name = ""
-	workspace[file_id] = item
+	workspace[file] = item
 	%ItemList.add_child(item)
-	_update_item(file_id)
+	_update_item(file)
 
 
-func _remove_item(file_id: StringName) -> void:
-	if file_id not in workspace:
+func _remove_item(file: StringName) -> void:
+	if file not in workspace:
 		return
 
-	var item: WorkspaceItem = workspace[file_id]
-	workspace.erase(file_id)
+	var item: WorkspaceItem = workspace[file]
+	workspace.erase(file)
 	%ItemList.remove_child(item)
 	item.queue_free()
 
 
-func _update_item(file_id: StringName) -> void:
-	if file_id not in workspace:
+func _update_item(file: StringName) -> void:
+	if file not in workspace:
 		return
-	workspace[file_id].file_name = file_id
+	workspace[file].file_name = file
 
 
-func _get_selected_items() -> Array[StringName]:
+func _get_selected_items() -> Array[String]:
 	return workspace.keys().filter(
-		func(file_id: StringName): return workspace[file_id].selected
+		func(file: StringName): return workspace[file].selected
 	)
 
 
 func _deselect_items() -> void:
-	for file_id in workspace:
-		workspace[file_id].selected = false
+	for file in workspace:
+		workspace[file].selected = false
 
 
 func _on_add_pressed() -> void:
@@ -84,12 +84,12 @@ func _on_remove_pressed() -> void:
 
 
 func _on_save_pressed() -> void:
-	for file_name in _get_selected_items():
+	for file in _get_selected_items():
 		%FileDialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-		%FileDialog.current_file = str(file_name)
+		%FileDialog.current_file = file
 		%FileDialog.popup_centered_clamped()
 		var dst_path = await %FileDialog.file_selected
-		_service.download_file(file_name, dst_path)
+		_service.download_file(file, dst_path)
 
 
 func _on_file_dialog_files_selected(paths: PackedStringArray) -> void:

@@ -16,7 +16,6 @@ sky_material = SubResource("ProceduralSkyMaterial_g8q63")
 background_mode = 2
 sky = SubResource("Sky_v4ncb")
 tonemap_mode = 2
-glow_enabled = true
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_l83dn"]
 _surfaces = [{
@@ -47,7 +46,7 @@ albedo_color = Color(1, 0.49803922, 0.3137255, 1)
 billboard_keep_scale = true
 fixed_size = true
 
-[sub_resource type="World3D" id="World3D_6hqkv"]
+[sub_resource type="World3D" id="World3D_dcok2"]
 environment = SubResource("Environment_l83dn")
 
 [node name="Viewer" type="PanelContainer"]
@@ -112,7 +111,7 @@ stretch = true
 
 [node name="SubViewportA" type="SubViewport" parent="VBoxContainer/Viewport/HSplitContainer/SubViewportContainerA"]
 unique_name_in_owner = true
-world_3d = SubResource("World3D_6hqkv")
+world_3d = SubResource("World3D_dcok2")
 handle_input_locally = false
 size = Vector2i(590, 267)
 render_target_update_mode = 4
@@ -120,6 +119,7 @@ render_target_update_mode = 4
 [node name="CameraA" type="Camera3D" parent="VBoxContainer/Viewport/HSplitContainer/SubViewportContainerA/SubViewportA"]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 9.040321)
+near = 0.001
 script = ExtResource("3_v4ncb")
 orbit_speed = 1.5
 
@@ -141,7 +141,7 @@ stretch = true
 
 [node name="SubViewportB" type="SubViewport" parent="VBoxContainer/Viewport/HSplitContainer/VSplitContainer/SubViewportContainerB"]
 unique_name_in_owner = true
-world_3d = SubResource("World3D_6hqkv")
+world_3d = SubResource("World3D_dcok2")
 handle_input_locally = false
 size = Vector2i(289, 268)
 render_target_update_mode = 4
@@ -151,8 +151,11 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 1000, -4.371139e-05)
 projection = 1
 size = 5.0
+near = 0.001
 script = ExtResource("4_l83dn")
 view = 4
+min_size = 0.1
+max_size = 100.0
 
 [node name="SubViewportContainerC" type="SubViewportContainer" parent="VBoxContainer/Viewport/HSplitContainer/VSplitContainer"]
 layout_mode = 2
@@ -162,7 +165,7 @@ stretch = true
 
 [node name="SubViewportC" type="SubViewport" parent="VBoxContainer/Viewport/HSplitContainer/VSplitContainer/SubViewportContainerC"]
 unique_name_in_owner = true
-world_3d = SubResource("World3D_6hqkv")
+world_3d = SubResource("World3D_dcok2")
 handle_input_locally = false
 size = Vector2i(289, 268)
 render_target_update_mode = 4
@@ -172,7 +175,10 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1000)
 projection = 1
 size = 5.0
+near = 0.001
 script = ExtResource("4_l83dn")
+min_size = 0.1
+max_size = 100.0
 
 [connection signal="volume_changed" from="EditorWorld/VolumeGizmo" to="." method="_on_volume_gizmo_volume_changed"]
 [connection signal="toggled" from="VBoxContainer/ToolBar/HBoxContainer/VolumeSelectToggle" to="." method="_on_volume_select_toggle_toggled"]

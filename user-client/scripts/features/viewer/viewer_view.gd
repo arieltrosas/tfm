@@ -17,7 +17,7 @@ const GLTF_EXTENSIONS: Array[String] = ["glb", "gltf"]
 	"C": %CameraC,
 }
 
-var _objects: Dictionary[StringName, Node3D] = {}
+var _objects: Dictionary[String, Node3D] = {}
 var _is_lmb_down: bool = false
 var _updating_from_backend: bool = false
 
@@ -56,10 +56,18 @@ func _on_volume_changed(volume: Variant) -> void:
 	_updating_from_backend = false
 
 
-func _on_workspace_file_added(file_id: StringName, source_path: String) -> void:
-	if file_id in _objects or not _is_gltf_file(file_id):
+func _on_workspace_file_added(file: String, source_path: String) -> void:
+	if file in _objects:
 		return
-	_load_gltf(file_id, source_path)
+	
+	var is_mesh: bool = await BackendAPI.geometry_mesh_supported(source_path)
+	
+	if is_mesh:
+		var cache_dir := OS.get_cache_dir()
+		var tmp_path := cache_dir.path_join("tmp_mesh_%x.glb" % Time.get_ticks_msec())
+		await BackendAPI.geometry_mesh_convert(source_path, tmp_path)
+		_load_gltf(file, tmp_path)
+		DirAccess.remove_absolute(tmp_path)
 
 
 func _on_workspace_file_removed(file_id: StringName) -> void:

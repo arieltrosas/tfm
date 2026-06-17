@@ -1,11 +1,13 @@
 class_name EditorCameraPerspective extends Camera3D
 
 @export_category("Movement Speeds")
+const minimum_orbit_radius: float = 1e-5
 const base_orbit_speed: float = 0.005
 @export_range(0.1, 2.0) var orbit_speed: float = 1.0
-const base_pan_speed: float = 0.001 # Adjusted down slightly to accommodate distance scaling
+const base_pan_speed: float = 0.001
 @export_range(0.1, 2.0) var pan_speed: float = 1.0
-@export_range(0.05, 0.5) var zoom_speed: float = 0.15
+const base_zoom_step: float = 0.1
+@export_range(0.1, 2.0) var zoom_speed: float = 1
 
 # Track internal rotation to completely avoid gimbal lock
 var yaw: float = 0.0
@@ -65,14 +67,15 @@ func pan(relative_mouse: Vector2) -> void:
 func zoom(direction_amount: float) -> void:
 	var radius: float = global_position.distance_to(orbit_target)
 	
-	# Prevent getting stuck directly on top of or breaking past the target
-	if radius < 0.25 and direction_amount < 0:
-		return
-		
 	var forward: Vector3 = global_transform.basis.z
-	# Scale zoom distance based on current proximity to the target
-	var zoom_step: float = radius * zoom_speed * direction_amount
-	global_position += forward * zoom_step
+	var zoom_step: float = radius * base_zoom_step * direction_amount
+	var new_position: Vector3 = global_position + forward * zoom_step * zoom_speed
+	
+	radius = new_position.distance_to(orbit_target)
+	if radius < minimum_orbit_radius:
+		return
+	
+	global_position = new_position
 
 ## Rotates the camera in place (FPS/Free-look style)
 func rotate_free(relative_mouse: Vector2) -> void:
@@ -89,8 +92,6 @@ func orbit(relative_mouse: Vector2, target_point: Vector3) -> void:
 	pitch = clamp(pitch, deg_to_rad(-89), deg_to_rad(89))
 	
 	var radius: float = global_position.distance_to(target_point)
-	if radius < 0.05: 
-		radius = 0.05 
 	
 	var target_basis: Basis = Basis.from_euler(Vector3(pitch, yaw, 0))
 	global_transform.basis = target_basis

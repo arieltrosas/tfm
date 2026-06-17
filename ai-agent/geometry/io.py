@@ -5,10 +5,24 @@ SUPPORTED_POINT_CLOUD_FORMATS = [".xyz", ".xyzn", ".xyzrgb", ".xyzrgba", ".pts",
 SUPPORTED_TRIANGLE_MESH_FORMATS = [".ply", ".stl", ".obj", ".off", ".gltf", ".glb"]
 
 def is_supported_point_cloud_format(file_path: str | Path) -> bool:
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File '{file_path}' not found")
+    if not file_path.is_file():
+        raise IsADirectoryError(f"File '{file_path}' is a directory")
     return file_path.suffix.lower() in SUPPORTED_POINT_CLOUD_FORMATS
 
 def is_supported_triangle_mesh_format(file_path: str | Path) -> bool:
-    return file_path.suffix.lower() in SUPPORTED_TRIANGLE_MESH_FORMATS
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File '{file_path}' not found")
+    if not file_path.is_file():
+        raise IsADirectoryError(f"File '{file_path}' is a directory")
+    return is_supported_triangle_mesh_extension(file_path)
+
+
+def is_supported_triangle_mesh_extension(file_path: str | Path) -> bool:
+    return Path(file_path).suffix.lower() in SUPPORTED_TRIANGLE_MESH_FORMATS
 
 def read_point_cloud(file_path: str | Path) -> o3d.geometry.PointCloud:
     file_path = Path(file_path)
@@ -29,7 +43,7 @@ def read_triangle_mesh(file_path: str | Path) -> o3d.geometry.TriangleMesh:
     if not file_path.is_file():
         raise IsADirectoryError(f"File '{file_path}' is a directory")
     mesh = o3d.io.read_triangle_mesh(file_path)
-    if mesh.is_empty():
+    if not mesh:
         raise ValueError(f"File '{file_path}' is not a valid triangle mesh")
     return mesh
 
@@ -59,7 +73,7 @@ def convert_point_cloud_to_pcd(input_path: str | Path, output_path: str | Path |
     
     write_point_cloud(output_path, pcd)
 
-def convert_mesh_to_glb(input_path: str | Path, output_path: str | Path | None = None) -> None:
+def convert_triangle_mesh_to_glb(input_path: str | Path, output_path: str | Path | None = None) -> None:
     mesh = read_triangle_mesh(input_path)
 
     if output_path is None:

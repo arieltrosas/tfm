@@ -3,17 +3,8 @@ import tempfile
 from pathlib import Path
 
 from common.events import AppEvent, AppEventType
+from common.types import FileResult
 from core.event_bus import EventBus
-from geometry.io import (
-    is_supported_point_cloud_format,
-    is_supported_triangle_mesh_format,
-    read_point_cloud,
-    read_triangle_mesh,
-    write_point_cloud,
-    write_triangle_mesh,
-    convert_point_cloud_to_pcd,
-    convert_mesh_to_glb,
-)
 
 
 class WorkspaceService:
@@ -49,46 +40,62 @@ class WorkspaceService:
             )
         )
 
-    async def upload(self, source_path: str) -> str:
-        source = Path(source_path)
-        if not source.exists():
-            raise FileNotFoundError(f"File '{source_path}' not found")
-        
-        def get_target_path(source: Path) -> Path:
-            target = self._root / source.name
-            if target.exists():
-                stem = target.stem
-                n = 0
-                while target.exists():
-                    target = target.with_stem(f"{stem} ({n})")
+    async def upload(self, src_paths: list[str]) -> dict[str, FileResult]:
+        results: dict[str, FileResult] = {}
+
+        def generate_dst_path(src: Path) -> Path:
+            dst = self._root / src.name
+            if dst.exists():
+                stem, n = dst.stem, 0
+                while dst.exists():
+                    dst = dst.with_stem(f"{stem} ({n})")
                     n += 1
-            return target
+            return dst
 
-        if is_supported_point_cloud_format(source):
-            target = get_target_path(source.with_suffix(".pcd"))
-            convert_point_cloud_to_pcd(source, target)
-        elif is_supported_triangle_mesh_format(source):
-            target = get_target_path(source.with_suffix(".glb"))
-            convert_mesh_to_glb(source, target)
-        else:
-            target = get_target_path(source)
-            shutil.copy(source, target)
-        
-        await self._emit_files_changed()
-        return target.name
+        def upload_file(src_path: str) -> Path:
+            path = Path(src_path)
+            if not path.exists():
+                raise FileNotFoundError(f"File '{path}' not found")
+            dst_path = generate_dst_path(path)
+            shutil.copy(path, dst_path)
+            return dst_path
 
-    async def remove(self, file_name: str) -> None:
-        path = self.resolve_file(file_name)
-        path.unlink()
+        for src_path in src_paths:
+            try:
+                dst_path = upload_file(src_path)
+                results[src_path] = FileResult(
+                    file_name=dst_path.name,
+                    status="success",
+                )
+            except Exception as e:
+                results[src_path] = FileResult(
+                    file_name=Path(src_path).name,
+                    status="error",
+                    error=str(e),
+                )
+
         await self._emit_files_changed()
-    async def download(self, file_name: str, download_path: str) -> None:
+        return results
+
+    async def download(self, file_name: str, download_path: str) -> FileResult:
         src_path = self.resolve_file(file_name)
-        dst_path = Path(download_path)
+        shutil.copy(src_path, Path(download_path))
+        return FileResult(file_name=file_name, status="success")
 
-        if is_supported_point_cloud_format(src_path):
-            write_point_cloud(dst_path, read_point_cloud(src_path))
-        elif is_supported_triangle_mesh_format(src_path):
-            write_triangle_mesh(src_path, read_triangle_mesh(src_path))
-        else:
-            shutil.copy(src_path, Path(download_path))
+    async def remove(self, files: list[str]) -> dict[str, FileResult]:
+        results: dict[str, FileResult] = {}
 
+        for file_name in files:
+            try:
+                path = self.resolve_file(file_name)
+                path.unlink(missing_ok=True)
+                results[file_name] = FileResult(file_name=file_name, status="success")
+            except Exception as e:
+                results[file_name] = FileResult(
+                    file_name=file_name,
+                    status="error",
+                    error=str(e),
+                )
+
+        await self._emit_files_changed()
+        return results

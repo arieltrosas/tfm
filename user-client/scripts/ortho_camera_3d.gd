@@ -20,8 +20,8 @@ const base_pan_speed: float = 0.005
 @export_range(0.1, 2.0) var zoom_speed: float = 1.0
 
 @export_category("Limits")
-@export var min_size: float = 0.1
-@export var max_size: float = 100.0
+@export var min_size: float = 1e-5
+@export var max_size: float = 1e5
 
 var _is_mmb_down: bool = false
 

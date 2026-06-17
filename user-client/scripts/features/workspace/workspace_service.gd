@@ -1,14 +1,12 @@
 class_name WorkspaceService extends RefCounted
 
-func upload_files(local_paths: PackedStringArray) -> void:
-	for path in local_paths:
-		await BackendAPI.workspace_upload(path)
+func upload_files(paths: Array[String]) -> void:
+	await BackendAPI.workspace_upload(paths)
 
 
-func remove_files(file_ids: Array[StringName]) -> void:
-	for file_id in file_ids:
-		await BackendAPI.workspace_remove(str(file_id))
+func remove_files(files: Array[String]) -> void:
+	await BackendAPI.workspace_remove(files)
 
 
-func download_file(file_id: StringName, destination: String) -> void:
-	BackendAPI.workspace_download(str(file_id), destination)
+func download_file(file: String, destination: String) -> void:
+	await BackendAPI.workspace_download(file, destination)
