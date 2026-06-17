@@ -19,7 +19,8 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-BackendAPI="*res://scripts/backend_api.gd"
+BackendAPI="*res://scripts/autoloads/backend_api.gd"
+AppEventBus="*res://scripts/autoloads/app_event_bus.gd"
 
 [display]
 

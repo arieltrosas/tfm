@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://hf6qysxl5dqv"]
 
-[ext_resource type="Script" uid="uid://vmqra3njjcn0" path="res://scripts/chat.gd" id="1_pq8so"]
+[ext_resource type="Script" path="res://scripts/features/chat/chat_view.gd" id="1_pq8so"]
 [ext_resource type="Texture2D" uid="uid://ccxhxbwjg72sg" path="res://resources/icon-send.svg" id="2_pq8so"]
 
 [node name="Chat" type="PanelContainer"]

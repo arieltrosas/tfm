@@ -1,6 +1,6 @@
 [gd_scene load_steps=9 format=3 uid="uid://c2jlugpjv5wj6"]
 
-[ext_resource type="Script" uid="uid://uh00eb24yduw" path="res://scripts/main.gd" id="1_c01mt"]
+[ext_resource type="Script" uid="uid://cnk1nfb03yrxf" path="res://scripts/app/app.gd" id="1_c01mt"]
 [ext_resource type="Texture2D" uid="uid://c46ntnrnfpw6g" path="res://icon.svg" id="1_rarhs"]
 [ext_resource type="PackedScene" uid="uid://6pybjfcm0y65" path="res://scenes/ui/Workspace.tscn" id="2_vcsgt"]
 [ext_resource type="Texture2D" uid="uid://bs2u268jy7te4" path="res://resources/icon-log-in.svg" id="3_c01mt"]
@@ -22,7 +22,7 @@ grow_begin = -4.0
 grow_end = -4.0
 vertical = true
 
-[node name="Main" type="MarginContainer"]
+[node name="Main" type="MarginContainer" node_paths=PackedStringArray("workspace_view", "viewer_view", "chat_view", "auth_popup", "info_popup")]
 clip_contents = true
 anchors_preset = 15
 anchor_right = 1.0
@@ -34,6 +34,11 @@ theme_override_constants/margin_top = 5
 theme_override_constants/margin_right = 5
 theme_override_constants/margin_bottom = 5
 script = ExtResource("1_c01mt")
+workspace_view = NodePath("VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace")
+viewer_view = NodePath("VBoxContainer/HSplitContainer/HSplitContainer/Viewer")
+chat_view = NodePath("VBoxContainer/HSplitContainer/HSplitContainer/Chat")
+auth_popup = NodePath("AuthPopup")
+info_popup = NodePath("InfoPopup")
 
 [node name="InfoPopup" type="PopupPanel" parent="."]
 unique_name_in_owner = true
@@ -195,5 +200,3 @@ layout_mode = 2
 [connection signal="pressed" from="AuthPopup/MarginContainer/VBoxContainer/HBoxContainer/Accept" to="." method="_on_auth_popup_accept_pressed"]
 [connection signal="pressed" from="AuthPopup/MarginContainer/VBoxContainer/HBoxContainer/Cancel" to="." method="_on_cancel_pressed"]
 [connection signal="pressed" from="VBoxContainer/PanelContainer/ToolBar/AuthButton" to="." method="_on_auth_button_pressed"]
-[connection signal="viewer_object_added" from="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace" to="." method="_on_workspace_viewer_object_added"]
-[connection signal="viewer_object_removed" from="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer/Workspace" to="." method="_on_workspace_viewer_object_removed"]

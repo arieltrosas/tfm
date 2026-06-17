@@ -1,6 +1,6 @@
-[gd_scene load_steps=13 format=4 uid="uid://bv10k2f36u5kv"]
+[gd_scene load_steps=12 format=4 uid="uid://bv10k2f36u5kv"]
 
-[ext_resource type="Script" uid="uid://bcg58qrnyskg5" path="res://scripts/viewer.gd" id="1_g8q63"]
+[ext_resource type="Script" uid="uid://cw17vuuqs0agu" path="res://scripts/features/viewer/viewer_view.gd" id="1_g8q63"]
 [ext_resource type="PackedScene" uid="uid://dtsf6l8lxs03u" path="res://scenes/VolumeGizmo.tscn" id="2_dcok2"]
 [ext_resource type="Script" uid="uid://dc1t0tywitqrs" path="res://scripts/perspective_camera_3d.gd" id="3_v4ncb"]
 [ext_resource type="Script" uid="uid://g88dydjhkuh8" path="res://scripts/ortho_camera_3d.gd" id="4_l83dn"]
@@ -47,15 +47,6 @@ albedo_color = Color(1, 0.49803922, 0.3137255, 1)
 billboard_keep_scale = true
 fixed_size = true
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_dcok2"]
-content_margin_left = 0.0
-content_margin_right = 0.0
-color = Color(0.5019608, 0.5019608, 0.5019608, 0.1882353)
-grow_begin = 4.0
-grow_end = 4.0
-thickness = 2
-vertical = true
-
 [sub_resource type="World3D" id="World3D_6hqkv"]
 environment = SubResource("Environment_l83dn")
 
@@ -95,24 +86,6 @@ theme_override_constants/margin_bottom = 4
 
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ToolBar"]
 layout_mode = 2
-
-[node name="Label" type="Label" parent="VBoxContainer/ToolBar/HBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "Point Size"
-
-[node name="PointSizeSlider" type="HSlider" parent="VBoxContainer/ToolBar/HBoxContainer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-size_flags_vertical = 4
-max_value = 1.0
-step = 0.0
-value = 0.5
-
-[node name="VSeparator" type="VSeparator" parent="VBoxContainer/ToolBar/HBoxContainer"]
-layout_mode = 2
-theme_override_styles/separator = SubResource("StyleBoxLine_dcok2")
 
 [node name="VolumeSelectToggle" type="CheckButton" parent="VBoxContainer/ToolBar/HBoxContainer"]
 unique_name_in_owner = true
@@ -202,7 +175,6 @@ size = 5.0
 script = ExtResource("4_l83dn")
 
 [connection signal="volume_changed" from="EditorWorld/VolumeGizmo" to="." method="_on_volume_gizmo_volume_changed"]
-[connection signal="value_changed" from="VBoxContainer/ToolBar/HBoxContainer/PointSizeSlider" to="." method="_on_point_size_slider_value_changed"]
 [connection signal="toggled" from="VBoxContainer/ToolBar/HBoxContainer/VolumeSelectToggle" to="." method="_on_volume_select_toggle_toggled"]
 [connection signal="gui_input" from="VBoxContainer/Viewport/HSplitContainer/SubViewportContainerA" to="." method="_on_sub_viewport_container_a_gui_input"]
 [connection signal="gui_input" from="VBoxContainer/Viewport/HSplitContainer/VSplitContainer/SubViewportContainerB" to="." method="_on_sub_viewport_container_b_gui_input"]
