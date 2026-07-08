@@ -370,7 +370,7 @@ class Renderer:
         proj = self.ortho(
             self.min_bound[0], self.max_bound[0], 
             self.min_bound[1], self.max_bound[1], 
-            depth, self.max_bound[2]
+            depth - 1e-6, self.max_bound[2]
         )
 
         glUniformMatrix4fv(self.u_locs["u_proj"], 1, GL_TRUE, proj)
