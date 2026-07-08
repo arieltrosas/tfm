@@ -4,7 +4,6 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from common.types import AABB
-from geometry import find_cavity_aabb, find_converged_cavity_volume
 from .api_client import get_state, get_volume, get_workspace_root, list_files, set_volume
 from .workspace_access import resolve_workspace_file
 
@@ -94,16 +93,7 @@ async def compute_cavity_volume(
     """
     ws_path = Path(await get_workspace_root())
     input_path = resolve_workspace_file(ws_path, input_file)
-
-    return await asyncio.to_thread(
-        find_converged_cavity_volume,
-        str(input_path),
-        aabb,
-        start_resolution,
-        step_factor,
-        tolerance,
-        min_resolution_floor,
-    )
+    return 0.0
 
 
 @mcp.tool()
@@ -130,12 +120,4 @@ async def find_cavity_with_curvature(
     """
     ws_path = Path(await get_workspace_root())
     input_path = resolve_workspace_file(ws_path, input_file)
-
-    return await asyncio.to_thread(
-        find_cavity_aabb,
-        str(input_path),
-        knn,
-        curvature_threshold,
-        eps,
-        min_points,
-    )
+    return None
