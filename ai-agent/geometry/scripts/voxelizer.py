@@ -24,7 +24,7 @@ def voxelize_with_renderer(
 ) -> tuple[np.ndarray, np.ndarray, list[np.ndarray], list[np.ndarray], list[float]]:
     """
     Voxelize a mesh and return:
-    - voxel occupancy grid (z, y, x)
+    - voxel occupancy grid (x, y, z)
     - minimum world bound
     - stencil slices
     - color slices
@@ -72,8 +72,8 @@ def voxelize_with_renderer(
     color_slices.reverse()
     slice_depths.reverse()
 
-    voxel_grid = np.stack(stencil_slices, axis=0)
-    occupancy = np.where(voxel_grid != 0, 1, 0).astype(np.uint8)
+    voxel_grid_zyx = np.stack(stencil_slices, axis=0)
+    occupancy = np.where(np.transpose(voxel_grid_zyx, (2, 1, 0)) != 0, 1, 0).astype(np.uint8)
     return occupancy, min_bound, stencil_slices, color_slices, slice_depths
 
 
@@ -82,7 +82,7 @@ def build_voxel_point_cloud(
     min_bound: np.ndarray,
     voxel_size: float,
 ) -> o3d.t.geometry.PointCloud:
-    voxel_indices = np.argwhere(occupancy != 0)[:, [2, 1, 0]]
+    voxel_indices = np.argwhere(occupancy != 0)
     voxel_coords = (voxel_indices + 0.5) * voxel_size + min_bound
     return o3d.t.geometry.PointCloud(o3d.core.Tensor(voxel_coords, dtype=o3d.core.float32))
 
@@ -145,6 +145,7 @@ def show_slice_slideshow(
 
 def main() -> None:
     mesh: TriangleMesh = read_triangle_mesh(o3d.data.KnotMesh().path)
+    mesh = read_triangle_mesh("/home/arieltr/Desktop/box_with_crack.ply")
     voxel_size: float = mesh.get_axis_aligned_bounding_box().get_extent().max().numpy() / 100.0
 
     if voxel_size <= 0:

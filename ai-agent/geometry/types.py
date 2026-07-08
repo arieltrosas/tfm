@@ -22,7 +22,7 @@ def mesh_to_legacy(mesh: TriangleMesh) -> o3d.geometry.TriangleMesh:
 
 def mesh_to_tensor(mesh: TriangleMesh) -> o3d.t.geometry.TriangleMesh:
     if isinstance(mesh, o3d.geometry.TriangleMesh):
-        return mesh.to_tensor()
+        return o3d.t.geometry.TriangleMesh.from_legacy(mesh)
     return mesh
 
 
@@ -34,5 +34,5 @@ def point_cloud_to_legacy(point_cloud: PointCloud) -> o3d.geometry.PointCloud:
 
 def point_cloud_to_tensor(point_cloud: PointCloud) -> o3d.t.geometry.PointCloud:
     if isinstance(point_cloud, o3d.geometry.PointCloud):
-        return point_cloud.to_tensor()
+        return o3d.t.geometry.PointCloud.from_legacy(point_cloud)
     return point_cloud

@@ -1,5 +1,5 @@
 from typing import Final
-from geometry.types import TriangleMesh, mesh_to_tensor
+from geometry.types import AABB, TriangleMesh, mesh_to_tensor
 
 import glfw
 import numpy as np
@@ -368,9 +368,9 @@ class Renderer:
         # draw
 
         proj = self.ortho(
-            self.min_bound[0], self.max_bound[0], 
-            self.min_bound[1], self.max_bound[1], 
-            depth - 1e-6, self.max_bound[2]
+            self.min_bound[0] - 1e-6, self.max_bound[0] + 1e-6, 
+            self.min_bound[1] - 1e-6, self.max_bound[1] + 1e-6  , 
+            depth, self.max_bound[2] + 1e-6
         )
 
         glUniformMatrix4fv(self.u_locs["u_proj"], 1, GL_TRUE, proj)
@@ -426,5 +426,33 @@ def voxelize_gpu(mesh: TriangleMesh, voxel_size: float) -> np.ndarray:
 
     slices.reverse()
 
-    voxel_grid = np.stack(slices, axis=0)[:, [2, 1, 0]]
-    return np.where(voxel_grid != 0, 1, 0)
+    # stack produces (z, y, x); transpose to requested (x, y, z)
+    voxel_grid_zyx = np.stack(slices, axis=0)
+    voxel_grid_xyz = np.transpose(voxel_grid_zyx, (2, 1, 0))
+    return np.where(voxel_grid_xyz != 0, 1, 0)
+
+
+def crop_voxel_grid(
+    voxel_grid: np.ndarray,
+    origin: np.ndarray,
+    bounds: AABB,
+    voxel_size: float  
+) -> np.ndarray:
+
+    crop_min = bounds.min_bound.numpy()
+    crop_max = bounds.max_bound.numpy()
+
+    min_idx = np.ceil((crop_min - origin) / voxel_size - 0.5).astype(int)
+    max_idx = np.floor((crop_max - origin) / voxel_size - 0.5).astype(int) + 1
+
+    grid_shape = np.array(voxel_grid.shape)
+    min_idx = np.clip(min_idx, 0, grid_shape)
+    max_idx = np.clip(max_idx, min_idx, grid_shape)
+
+    cropped_grid = voxel_grid[
+        min_idx[0]:max_idx[0],
+        min_idx[1]:max_idx[1],
+        min_idx[2]:max_idx[2]
+    ]
+
+    return cropped_grid.copy()
