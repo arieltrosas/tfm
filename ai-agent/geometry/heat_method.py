@@ -13,6 +13,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import numba
 
+from geometry.core import compute_cotan_laplacian
 
 ###############################################################################
 # DATA STRUCTURES
@@ -27,64 +28,32 @@ class HeatMethodResult:
 ###############################################################################
 # NUMBA KERNELS
 
-@numba.njit(fastmath=True)
-def _build_cotan_and_mass_entries(vertices: np.ndarray, triangles: np.ndarray):
+@numba.njit
+def _compute_mass_matrix(vertices: np.ndarray, triangles: np.ndarray):
     """
-    Computes COO matrix entries for Cotan Laplacian and lumped Mass matrix.
+    Computes the mass matrix diagonal.
     """
     
     n_vertices = vertices.shape[0]
     n_triangles = triangles.shape[0]
     
-    total_entries = n_triangles * 15
-    rows = np.zeros(total_entries, dtype=np.int64)
-    cols = np.zeros(total_entries, dtype=np.int64)
-    data = np.zeros(total_entries, dtype=np.float64)
-    areas = np.zeros(n_vertices, dtype=np.float64)
+    mass_diag = np.zeros(n_vertices, dtype=np.float64)
 
-    ptr = 0
     for t in range(n_triangles):
         i, j, k = triangles[t]
 
-        # face area
-
         cross_prod = np.cross(vertices[j] - vertices[i], vertices[k] - vertices[i])
         norm_cross = np.sqrt(np.sum(cross_prod**2))
-        area_contrib = norm_cross / 6.0
+        area = norm_cross / 6.0
 
-        areas[i] += area_contrib
-        areas[j] += area_contrib
-        areas[k] += area_contrib
+        mass_diag[i] += area
+        mass_diag[j] += area
+        mass_diag[k] += area
 
-        # cotangent
-
-        edges = ((j, k, i), (i, k, j), (i, j, k))
-
-        for idx in range(3):
-            v0, v1, v2 = edges[idx]
-            u = vertices[v0] - vertices[v2]
-            v = vertices[v1] - vertices[v2]
-            
-            cp = np.cross(u, v)
-            norm_cp = np.sqrt(np.sum(cp**2))
-            
-            cotan = 0.0 if norm_cp < 1e-10 else np.dot(u, v) / norm_cp
-
-            rows[ptr] = v0; cols[ptr] = v1; data[ptr] = -0.5 * cotan; ptr += 1
-            rows[ptr] = v1; cols[ptr] = v0; data[ptr] = -0.5 * cotan; ptr += 1
-            rows[ptr] = v0; cols[ptr] = v0; data[ptr] =  0.5 * cotan; ptr += 1
-            rows[ptr] = v1; cols[ptr] = v1; data[ptr] =  0.5 * cotan; ptr += 1
-
-        # regularization
-
-        rows[ptr] = i; cols[ptr] = i; data[ptr] = 1e-8; ptr += 1
-        rows[ptr] = j; cols[ptr] = j; data[ptr] = 1e-8; ptr += 1
-        rows[ptr] = k; cols[ptr] = k; data[ptr] = 1e-8; ptr += 1
-
-    return areas, rows, cols, data
+    return mass_diag
 
 
-@numba.njit(fastmath=True)
+@numba.njit
 def _compute_integrated_divergence(vertices: np.ndarray, triangles: np.ndarray, u: np.ndarray) -> np.ndarray:
     """
     Computes divergence of the normalized heat gradient field per vertex.
@@ -163,11 +132,8 @@ class HeatMethodSolver:
         self._heat_solver = spla.factorized((self.mass_matrix + self.t * self.laplacian).tocsc())
 
     def _build(self) -> tuple[sp.csr_matrix, sp.csr_matrix]:
-        areas, rows, cols, data = _build_cotan_and_mass_entries(self.vertices, self.triangles)
-        n = self.vertices.shape[0]
-        
-        M = sp.diags(areas, format='csr')
-        L = sp.coo_matrix((data, (rows, cols)), shape=(n, n)).tocsr()
+        M = sp.diags(_compute_mass_matrix(self.vertices, self.triangles), format='csr')
+        L = compute_cotan_laplacian(self.vertices, self.triangles)
         return M, L
 
     def _compute_avg_edge_length(self) -> float:
