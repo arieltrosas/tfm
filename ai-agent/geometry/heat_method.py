@@ -13,7 +13,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 import numba
 
-from geometry.core import compute_cotan_laplacian
+from geometry.curvature import compute_cotan_laplacian, compute_mass_matrix
 
 ###############################################################################
 # DATA STRUCTURES
@@ -27,31 +27,6 @@ class HeatMethodResult:
 
 ###############################################################################
 # NUMBA KERNELS
-
-@numba.njit
-def _compute_mass_matrix(vertices: np.ndarray, triangles: np.ndarray):
-    """
-    Computes the mass matrix diagonal.
-    """
-    
-    n_vertices = vertices.shape[0]
-    n_triangles = triangles.shape[0]
-    
-    mass_diag = np.zeros(n_vertices, dtype=np.float64)
-
-    for t in range(n_triangles):
-        i, j, k = triangles[t]
-
-        cross_prod = np.cross(vertices[j] - vertices[i], vertices[k] - vertices[i])
-        norm_cross = np.sqrt(np.sum(cross_prod**2))
-        area = norm_cross / 6.0
-
-        mass_diag[i] += area
-        mass_diag[j] += area
-        mass_diag[k] += area
-
-    return mass_diag
-
 
 @numba.njit
 def _compute_integrated_divergence(vertices: np.ndarray, triangles: np.ndarray, u: np.ndarray) -> np.ndarray:
@@ -132,7 +107,7 @@ class HeatMethodSolver:
         self._heat_solver = spla.factorized((self.mass_matrix + self.t * self.laplacian).tocsc())
 
     def _build(self) -> tuple[sp.csr_matrix, sp.csr_matrix]:
-        M = sp.diags(_compute_mass_matrix(self.vertices, self.triangles), format='csr')
+        M = compute_mass_matrix(self.vertices, self.triangles)
         L = compute_cotan_laplacian(self.vertices, self.triangles)
         return M, L
 
