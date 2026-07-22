@@ -250,7 +250,7 @@ def integrate_scene_rgbd_images(
 
 
 ################################################################################
-# Pipelines
+# Full Pipelines
 
 def rgbd_reconstruction_pipeline(all_rgbd_images, intrinsic, fragment_size=100, voxel_size=0.01):
     """
