@@ -60,7 +60,6 @@ def run_mcp_client(port_file: str | None):
         try:
             await _try_connect_mcp_server(mcp_client)
             await server_task
-
         except asyncio.CancelledError:
             pass
         except Exception as e:

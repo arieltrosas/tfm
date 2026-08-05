@@ -2,7 +2,7 @@ from pathlib import Path
 
 from geometry.io import (
     is_supported_point_cloud_format,
-    is_supported_triangle_mesh_extension,
+    is_supported_triangle_mesh_format,
     is_supported_triangle_mesh_format,
     read_triangle_mesh,
     write_triangle_mesh,
