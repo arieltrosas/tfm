@@ -1,14 +1,18 @@
+from pathlib import Path
+
 from mcp.server.fastmcp import FastMCP
 
 import numpy as np
+import open3d as o3d
 
 from common.types import AABB
 
 from ...common import resolve_within_root
-from ...types import aabb_from_o3d
+from ...api_client import workspace
+from ...types import aabb_from_o3d, aabb_to_o3d
 
-from geometry.io import read_triangle_mesh, write_triangle_mesh
-from geometry.types import mesh_to_legacy
+from geometry.io import read_triangle_mesh, write_point_cloud, write_triangle_mesh
+from geometry.types import AABB as O3DAABB, mesh_to_legacy
 from geometry.volume import extract_cavity_within_bounds
 from geometry.curvature import cluster_cavities
 
@@ -20,7 +24,8 @@ def register(mcp: FastMCP) -> None:
         Compute the volume of a mesh.
         """
 
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         return mesh.get_volume()
@@ -37,13 +42,18 @@ def register(mcp: FastMCP) -> None:
         Extract cavity voxel coordinates within a region and write it to a file as a mesh.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
 
-        mesh = read_triangle_mesh(input_path)
-        cavity = extract_cavity_within_bounds(mesh, aabb, voxel_size)
+        mesh = mesh_to_legacy(read_triangle_mesh(input_path))
+        cavity_coords = extract_cavity_within_bounds(mesh, aabb_to_o3d(aabb), voxel_size)
 
-        write_triangle_mesh(output_path, cavity)
+        cavity_cloud = o3d.geometry.PointCloud()
+        if len(cavity_coords) > 0:
+            cavity_cloud.points = o3d.utility.Vector3dVector(cavity_coords)
+
+        write_point_cloud(output_path, cavity_cloud)
 
         return output_path.name
         
@@ -59,8 +69,9 @@ def register(mcp: FastMCP) -> None:
         Returns a list of bounding boxes for each detected cavity.
         """
 
-        input_path = await resolve_within_root(input_file)
-        mesh = read_triangle_mesh(input_path)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         clusters = cluster_cavities(mesh, percentile, min_points)
         vertices = np.asarray(mesh.vertices)
@@ -70,6 +81,6 @@ def register(mcp: FastMCP) -> None:
             cluster_vertices = vertices[cluster]
             min_bound = np.min(cluster_vertices, axis=0)
             max_bound = np.max(cluster_vertices, axis=0)
-            cavities.append(aabb_from_o3d(min_bound, max_bound))
+            cavities.append(aabb_from_o3d(O3DAABB(min_bound=min_bound, max_bound=max_bound)))
 
         return cavities

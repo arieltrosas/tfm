@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from mcp.server.fastmcp import FastMCP
 
 import numpy as np
@@ -9,6 +11,7 @@ from common.types import AABB
 
 from ...types import aabb_to_o3d
 from ...common import resolve_within_root
+from ...api_client import workspace
 
 def register(mcp: FastMCP) -> None:
     @mcp.tool()
@@ -20,7 +23,8 @@ def register(mcp: FastMCP) -> None:
         """
         Measure the geodesic surface distance between two points on a mesh using the heat method.
         """
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = read_triangle_mesh(input_path)
         a, b = np.array(a), np.array(b)
         return estimate_surface_distance(mesh, a, b)
@@ -34,8 +38,9 @@ def register(mcp: FastMCP) -> None:
         """
         Measure the surface area of the mesh within the specified bounds.
         """
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = read_triangle_mesh(input_path)
-        return estimate_surface_distance(mesh, aabb_to_o3d(bounds))
+        return estimate_surface_area(mesh, aabb_to_o3d(bounds))
         
 

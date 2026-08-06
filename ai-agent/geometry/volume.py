@@ -1,25 +1,32 @@
 import numpy as np
 import open3d as o3d
 
-from geometry.types import AABB
+from geometry.types import AABB, mesh_to_legacy
 from geometry.voxelizer import voxelize_mesh
 
 
+def _bound_to_numpy(bound) -> np.ndarray:
+    if hasattr(bound, "numpy"):
+        return bound.numpy()
+    return np.asarray(bound)
+
+
 def extract_cavity_within_bounds(
-    mesh: o3d.geometry.TriangleMesh, 
+    mesh: o3d.geometry.TriangleMesh,
     bounds: AABB,
-    voxel_size: float
+    voxel_size: float,
 ) -> np.ndarray:
     """
     Extracts the cavity within specified bounds and returns an (N, 3) float array of real-world coordinates of empty cavity voxels.
     """
+    mesh = mesh_to_legacy(mesh)
+    vertices = np.asarray(mesh.vertices)
+    triangles = np.asarray(mesh.triangles)
 
-    origin = mesh.get_axis_aligned_bounding_box().min_bound.numpy()
+    voxel_grid, origin = voxelize_mesh(vertices, triangles, voxel_size)
 
-    voxel_grid = voxelize_mesh(mesh, voxel_size)
-
-    crop_min = bounds.min_bound.numpy()
-    crop_max = bounds.max_bound.numpy()
+    crop_min = _bound_to_numpy(bounds.min_bound)
+    crop_max = _bound_to_numpy(bounds.max_bound)
 
     min_idx = np.ceil((crop_min - origin) / voxel_size - 0.5).astype(int)
     max_idx = np.floor((crop_max - origin) / voxel_size - 0.5).astype(int) + 1

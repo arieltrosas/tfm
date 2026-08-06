@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from mcp.server.fastmcp import FastMCP
 
 from common.types import (
@@ -5,10 +7,10 @@ from common.types import (
     AABB,
 )
 
-from ...types import WriteFileResult
 from ...common import resolve_within_root
 from ...api_client import (
     state,
+    workspace,
     workspace_files,
 )
 
@@ -38,6 +40,7 @@ def register(mcp: FastMCP) -> None:
         Write text content to a file in the workspace.
         Useful for persisting reports, summaries, or other text the agent generates.
         """
-        output_path = await resolve_within_root(filename)
+        root = Path(await workspace())
+        output_path = resolve_within_root(root, filename)
         output_path.write_text(content)
         return output_path.name

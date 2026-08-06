@@ -1,10 +1,17 @@
 from typing import Literal
 
+import numpy as np
 import open3d as o3d
 from pydantic import BaseModel, Field
 
 from geometry.types import AABB as O3DAABB
 from common.types import AABB
+
+
+def _bound_to_numpy(bound) -> np.ndarray:
+    if hasattr(bound, "numpy"):
+        return bound.numpy()
+    return np.asarray(bound)
 
 
 def aabb_to_o3d(aabb: AABB) -> O3DAABB:
@@ -15,8 +22,8 @@ def aabb_to_o3d(aabb: AABB) -> O3DAABB:
 
 
 def aabb_from_o3d(aabb: O3DAABB) -> AABB:
-    min_bound = aabb.min_bound.numpy()
-    max_bound = aabb.max_bound.numpy()
+    min_bound = _bound_to_numpy(aabb.min_bound)
+    max_bound = _bound_to_numpy(aabb.max_bound)
     size = max_bound - min_bound
     return AABB(
         x=float(min_bound[0]),
@@ -28,12 +35,7 @@ def aabb_from_o3d(aabb: O3DAABB) -> AABB:
     )
 
 
-class ToolResult(BaseModel):
-    status: Literal["success", "error"] = "success"
-    error: str | None = None
-
-
-class GeometryInfoResult(ToolResult):
+class GeometryInfoResult(BaseModel):
     type: Literal["mesh", "point_cloud", "unknown"] = "unknown"
     vertex_count: int | None = None
     point_count: int | None = None

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from mcp.server.fastmcp import FastMCP
 
 import numpy as np
@@ -23,8 +25,9 @@ from geometry.io import (
 
 from common.types import AABB
 
-from ...types import GeometryInfoResult, aabb_from_o3d
+from ...types import GeometryInfoResult, aabb_from_o3d, aabb_to_o3d
 from ...common import resolve_within_root
+from ...api_client import workspace
 
 
 def register(mcp: FastMCP) -> None:
@@ -35,7 +38,8 @@ def register(mcp: FastMCP) -> None:
         This includes format, vertex/point count, face count, bounding box, etc...
         """
 
-        path = await resolve_within_root(filename)
+        root = Path(await workspace())
+        path = resolve_within_root(root, filename)
 
         result = GeometryInfoResult()
         
@@ -50,6 +54,8 @@ def register(mcp: FastMCP) -> None:
             result.type = "point_cloud"
             result.point_count = len(point_cloud.points)
             result.bounds = aabb_from_o3d(point_cloud.get_axis_aligned_bounding_box())
+        else:
+            raise ValueError(f"File is not a valid geometry file: {path}")
         
         return result
 
@@ -61,8 +67,9 @@ def register(mcp: FastMCP) -> None:
         Reads from input_file and writes the result to output_file.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         write_triangle_mesh(output_path, read_triangle_mesh(input_path))
 
@@ -76,8 +83,9 @@ def register(mcp: FastMCP) -> None:
         Reads from input_file and writes the result to output_file.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         write_point_cloud(output_path, read_point_cloud(input_path))
         
@@ -94,8 +102,9 @@ def register(mcp: FastMCP) -> None:
         Simplify a mesh and write the result to a file in the workspace.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         mesh = mesh_to_tensor(read_triangle_mesh(input_path))
         mesh = mesh.simplify_quadric_decimation(target_reduction=reduction)
@@ -114,8 +123,9 @@ def register(mcp: FastMCP) -> None:
         Downsamples a point cloud using voxel grid filtering and write the result to a file.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         point_cloud = point_cloud_to_tensor(read_point_cloud(input_path))
         point_cloud = point_cloud.voxel_down_sample(voxel_size=voxel_size)
@@ -139,8 +149,9 @@ def register(mcp: FastMCP) -> None:
         Rotation is performed around the coordinate origin.
         """
 
-        input_path = await (input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         mesh = mesh_to_tensor(read_triangle_mesh(input_path))
 
@@ -178,8 +189,9 @@ def register(mcp: FastMCP) -> None:
         Rotation is performed around the coordinate origin.
         """
 
-        input_path = await (input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         point_cloud = point_cloud_to_tensor(read_point_cloud(input_path))
 
@@ -212,11 +224,12 @@ def register(mcp: FastMCP) -> None:
         Sample a mesh surface uniformly and write the result as a point cloud file.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         mesh = mesh_to_tensor(read_triangle_mesh(input_path))
-        point_cloud = mesh.sample_points_uniformly(num_points=num_points)
+        point_cloud = mesh.sample_points_uniformly(number_of_points=num_points)
         write_point_cloud(output_path, point_cloud)
 
         return output_path.name
@@ -232,11 +245,16 @@ def register(mcp: FastMCP) -> None:
         Reconstruct a mesh from a point cloud using Poisson surface reconstruction.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
-        point_cloud = point_cloud_to_tensor(read_point_cloud(input_path))
-        mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(point_cloud, depth=depth)
+        point_cloud = point_cloud_to_legacy(read_point_cloud(input_path))
+        point_cloud.estimate_normals()
+        mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
+            point_cloud,
+            depth=depth,
+        )
         write_triangle_mesh(output_path, mesh)
 
         return output_path.name
@@ -252,11 +270,12 @@ def register(mcp: FastMCP) -> None:
         Crop a mesh to a given bounding box and write the result to a file.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
-        mesh = mesh.crop(aabb)
+        mesh = mesh.crop(aabb_to_o3d(aabb).to_legacy())
         write_triangle_mesh(output_path, mesh)
 
         return output_path.name
@@ -270,7 +289,8 @@ def register(mcp: FastMCP) -> None:
         Check if a mesh is watertight.
         """
 
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         return mesh.is_watertight()
@@ -284,7 +304,8 @@ def register(mcp: FastMCP) -> None:
         Check if a mesh is manifold.
         """
 
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         is_vertex_manifold = mesh.is_vertex_manifold()
@@ -301,7 +322,8 @@ def register(mcp: FastMCP) -> None:
         Check if a mesh is orientable.
         """
 
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         return mesh.is_orientable()
@@ -315,7 +337,8 @@ def register(mcp: FastMCP) -> None:
         Check if a mesh is self-intersecting.
         """
 
-        input_path = await resolve_within_root(input_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         return mesh.is_self_intersecting()
@@ -331,8 +354,9 @@ def register(mcp: FastMCP) -> None:
         Clean a mesh by removing unreferenced vertices, degenerate triangles, duplicated triangles, duplicated vertices, and non-manifold edges.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         if "vertices" in clean:
@@ -358,8 +382,9 @@ def register(mcp: FastMCP) -> None:
         Filter a mesh using average neighborhood operations.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         mesh = mesh.compute_triangle_normals()
@@ -378,8 +403,9 @@ def register(mcp: FastMCP) -> None:
         Smooth a mesh using average filtering.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         mesh = mesh.filter_smooth_simple(number_of_iterations=iterations)
@@ -398,8 +424,9 @@ def register(mcp: FastMCP) -> None:
         Smooth a mesh using Taubin filtering.
         """
 
-        input_path = await resolve_within_root(input_file)
-        output_path = await resolve_within_root(output_file)
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
 
         mesh = mesh.filter_smooth_taubin(number_of_iterations=iterations)

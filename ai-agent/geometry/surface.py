@@ -12,7 +12,8 @@ def estimate_surface_area(mesh: TriangleMesh, bounds: AABB) -> float:
     """
 
     mesh = mesh_to_legacy(mesh)
-    mesh = mesh.crop(bounds)
+    crop_box = bounds.to_legacy() if hasattr(bounds, "to_legacy") else bounds
+    mesh = mesh.crop(crop_box)
 
     if mesh.is_empty():
         raise ValueError("Mesh geometry is empty")

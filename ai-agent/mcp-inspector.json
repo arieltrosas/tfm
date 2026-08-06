@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ai-agent": {
+      "command": ".venv/bin/python",
+      "args": ["main.py", "server"],
+      "cwd": ".",
+      "env": {
+        "MCP_LOCAL_API_URL": "http://127.0.0.1:8000"
+      }
+    }
+  }
+}

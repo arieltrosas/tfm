@@ -24,12 +24,11 @@ from common.types import (
 
 _client: httpx.AsyncClient | None = None
 
+_DEFAULT_API_URL = "http://127.0.0.1:8000"
+
 
 def _get_base_url() -> str:
-    url = os.environ.get("MCP_LOCAL_API_URL")
-    if not url:
-        raise RuntimeError("MCP_LOCAL_API_URL environment variable is not set")
-    return url
+    return os.environ.get("MCP_LOCAL_API_URL", _DEFAULT_API_URL)
 
 
 def _get_client() -> httpx.AsyncClient:
