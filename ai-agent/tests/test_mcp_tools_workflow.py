@@ -12,6 +12,8 @@ EXPECTED_TOOL_NAMES = {
     "get_app_state",
     "list_workspace_files",
     "write_file",
+    "read_file",
+    "delete_file",
     "get_geometry_info",
     "convert_mesh_format",
     "convert_point_cloud_format",
@@ -55,11 +57,12 @@ async def test_mcp_tools_workflow(
     cloud_file = seed_workspace["cloud"]
 
     # Workspace / state
+    report_content = "integration test report"
     report_name = parse_tool_result(
         await call_tool(
             mcp_session,
             "write_file",
-            {"filename": "report.txt", "content": "integration test report"},
+            {"filename": "report.txt", "content": report_content},
         )
     )
     assert report_name == "report.txt"
@@ -69,9 +72,24 @@ async def test_mcp_tools_workflow(
     assert mesh_file in files
     assert cloud_file in files
 
+    read_content = parse_tool_result(
+        await call_tool(mcp_session, "read_file", {"filename": report_name})
+    )
+    assert read_content == report_content
+
+    deleted = parse_tool_result(
+        await call_tool(mcp_session, "delete_file", {"files": [report_name]})
+    )
+    assert report_name in deleted
+
+    files_after_delete = parse_tool_result(
+        await call_tool(mcp_session, "list_workspace_files")
+    )
+    assert report_name not in files_after_delete
+
     app_state = parse_tool_result(await call_tool(mcp_session, "get_app_state"))
     assert app_state["workspace_dir"]
-    assert len(app_state["files"]) >= 3
+    assert len(app_state["files"]) >= 2
 
     # Mesh info & conversion
     mesh_info = parse_tool_result(
