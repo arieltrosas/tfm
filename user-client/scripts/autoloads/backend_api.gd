@@ -64,26 +64,28 @@ func get_app_state() -> Dictionary:
 	return response["body"]
 
 
-# selection volume
+# selection
 
-func volume_get() -> Variant:
-	var response = await _send_request("/volume/get")
+func selection_add(selections: Dictionary) -> bool:
+	var response = await _send_request(
+		"/selection/add",
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"selections": selections})
+	)
 	if _backend_error(response):
-		_print_backend_error("/volume/get", response)
-		return null
-	return parse_aabb(response["body"].get("volume"))
+		_print_backend_error("/selection/add", response)
+		return false
+	return true
 
 
-func volume_set(aabb: Variant) -> bool:
-	var volume_payload = null
-	if aabb is AABB:
-		volume_payload = {
-			"x": aabb.position.x, "y": aabb.position.y, "z": aabb.position.z,
-			"w": aabb.size.x, "h": aabb.size.y, "d": aabb.size.z,
-		}
-	var response = await _send_request("/volume/set", HTTPClient.METHOD_POST, JSON.stringify({"volume": volume_payload}))
+func selection_remove(labels: Array) -> bool:
+	var response = await _send_request(
+		"/selection/remove",
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"labels": labels})
+	)
 	if _backend_error(response):
-		_print_backend_error("/volume/set", response)
+		_print_backend_error("/selection/remove", response)
 		return false
 	return true
 
@@ -454,3 +456,9 @@ func parse_aabb(dict: Variant) -> Variant:
 	var pos = Vector3(dict.get("x", 0.0), dict.get("y", 0.0), dict.get("z", 0.0))
 	var size = Vector3(dict.get("w", 0.0), dict.get("h", 0.0), dict.get("d", 0.0))
 	return AABB(pos, size)
+
+
+func parse_point(dict: Variant) -> Variant:
+	if dict == null or not (dict is Dictionary):
+		return null
+	return Vector3(dict.get("x", 0.0), dict.get("y", 0.0), dict.get("z", 0.0))

@@ -18,7 +18,7 @@ from api.routes import (
     models, 
     shutdown, 
     state, 
-    volume, 
+    selection,
     workspace, 
     geometry,
 )
@@ -52,7 +52,7 @@ def create_app() -> FastAPI:
 
     app.include_router(util.router)
     app.include_router(state.router)
-    app.include_router(volume.router)
+    app.include_router(selection.router)
     app.include_router(chat.router)
     app.include_router(connect.router)
     app.include_router(health.router)

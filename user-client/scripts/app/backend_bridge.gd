@@ -22,12 +22,12 @@ func _on_remote_event(event_type: String, payload: Dictionary) -> void:
 	match event_type:
 		"workspace.files_changed":
 			_apply_workspace_files(payload.get("files", []))
-		"volume.changed":
-			AppEventBus.volume_changed.emit(BackendAPI.parse_aabb(payload.get("volume")))
+		"selection.changed":
+			AppEventBus.selections_changed.emit(payload.get("selections", {}))
 		"app_state.changed":
 			_workspace_root = payload.get("workspace_dir", _workspace_root)
 			_apply_workspace_files(payload.get("files", []))
-			AppEventBus.volume_changed.emit(BackendAPI.parse_aabb(payload.get("selected_volume")))
+			AppEventBus.selections_changed.emit(payload.get("selections", {}))
 
 
 func _apply_workspace_files(files: Array) -> void:

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class AppEventType(str, Enum):
     WORKSPACE_FILES_CHANGED = "workspace.files_changed"
-    VOLUME_CHANGED = "volume.changed"
+    SELECTION_CHANGED = "selection.changed"
     APP_STATE_CHANGED = "app_state.changed"
 
 

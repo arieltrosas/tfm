@@ -1,6 +1,8 @@
 # common/types.py
 
-from pydantic import BaseModel
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field
 
 # --- Core Objects ---
 
@@ -13,10 +15,29 @@ class AABB(BaseModel):
     d: float
 
 
+class Point(BaseModel):
+    x: float
+    y: float
+    z: float
+
+
+class AabbSelection(BaseModel):
+    kind: Literal["aabb"]
+    aabb: AABB
+
+
+class PointSelection(BaseModel):
+    kind: Literal["point"]
+    point: Point
+
+
+Selection = Annotated[AabbSelection | PointSelection, Field(discriminator="kind")]
+
+
 class AppState(BaseModel):
     workspace_dir: str
     files: list[str]
-    selected_volume: AABB | None
+    selections: dict[str, Selection]
 
 
 # --- Connection Endpoints Schemas ---
@@ -31,14 +52,14 @@ class ConnectOpenAIRequest(BaseModel):
     api_key: str
 
 
-# --- Volume Endpoints Schemas ---
+# --- Selection Endpoints Schemas ---
 
-class VolumeGetResponse(BaseModel):
-    volume: AABB | None
+class SelectionAddRequest(BaseModel):
+    selections: dict[str, Selection]
 
 
-class VolumeSetRequest(BaseModel):
-    volume: AABB | None
+class SelectionRemoveRequest(BaseModel):
+    labels: list[str]
 
 
 # --- Chat Endpoints Schemas ---

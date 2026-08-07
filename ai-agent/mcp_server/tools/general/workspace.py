@@ -4,7 +4,6 @@ from mcp.server.fastmcp import FastMCP
 
 from common.types import (
     AppState,
-    AABB,
 )
 
 from ...common import resolve_within_root
@@ -21,7 +20,7 @@ def register(mcp: FastMCP) -> None:
     async def get_app_state() -> AppState:
         """
         Fetch the entire centralized application state (AppState).
-        Provides metadata about the current workspace directory path, active workspace filenames, and selection volume.
+        Provides metadata about the current workspace directory path, active workspace filenames, and labeled selections.
         """
         return await state()
 

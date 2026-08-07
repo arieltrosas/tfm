@@ -19,11 +19,9 @@ const GLTF_EXTENSIONS: Array[String] = ["glb", "gltf"]
 
 var _objects: Dictionary[String, Node3D] = {}
 var _is_lmb_down: bool = false
-var _updating_from_backend: bool = false
 
 
 func setup() -> void:
-	AppEventBus.volume_changed.connect(_on_volume_changed)
 	AppEventBus.workspace_file_added.connect(_on_workspace_file_added)
 	AppEventBus.workspace_file_removed.connect(_on_workspace_file_removed)
 
@@ -45,15 +43,6 @@ func _sync_worlds() -> void:
 	for vp in viewports.values():
 		var _old_world_3d = vp.world_3d # this avoids a bug in godot's pointer handling
 		vp.world_3d = world_3d
-
-
-func _on_volume_changed(volume: Variant) -> void:
-	if %VolumeGizmo.is_dragging():
-		return
-	_updating_from_backend = true
-	if volume is AABB and not %VolumeGizmo.box.is_equal_approx(volume):
-		%VolumeGizmo.box = volume
-	_updating_from_backend = false
 
 
 func _on_workspace_file_added(file: String, source_path: String) -> void:
@@ -134,13 +123,9 @@ func _on_sub_viewport_container_c_gui_input(event: InputEvent) -> void:
 
 
 func _on_volume_select_toggle_toggled(toggled_on: bool) -> void:
-	if _updating_from_backend:
-		return
 	%VolumeGizmo.visible = toggled_on
 	%VolumeGizmo.disabled = not toggled_on
 
 
-func _on_volume_gizmo_volume_changed(volume: AABB) -> void:
-	if _updating_from_backend:
-		return
-	BackendAPI.volume_set(volume)
+func _on_volume_gizmo_volume_changed(_volume: AABB) -> void:
+	pass

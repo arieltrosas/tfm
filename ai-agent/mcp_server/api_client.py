@@ -3,15 +3,15 @@ import os
 import httpx
 
 from common.types import (
-    AABB,
     AppState,
     GeometryMeshConvertRequest,
     GeometryMeshSupportedRequest,
     GeometryMeshSupportedResponse,
     GeometryPointCloudSupportedRequest,
     GeometryPointCloudSupportedResponse,
-    VolumeGetResponse,
-    VolumeSetRequest,
+    Selection,
+    SelectionAddRequest,
+    SelectionRemoveRequest,
     WorkspaceDownloadRequest,
     WorkspaceDownloadResponse,
     WorkspaceFilesResponse,
@@ -49,20 +49,23 @@ async def state() -> AppState:
 
 
 ########################################################
-# Volume
+# Selection
 
-async def volume_get() -> AABB | None:
+async def selection_add(selections: dict[str, Selection]) -> None:
     client = _get_client()
-    response = await client.get(f"{_get_base_url()}/volume/get")
-    response.raise_for_status()
-    return VolumeGetResponse.model_validate(response.json()).volume
-
-
-async def volume_set(volume: AABB | None = None) -> None:
-    client = _get_client()
-    payload = VolumeSetRequest(volume=volume)
+    payload = SelectionAddRequest(selections=selections)
     response = await client.post(
-        f"{_get_base_url()}/volume/set",
+        f"{_get_base_url()}/selection/add",
+        json=payload.model_dump(),
+    )
+    response.raise_for_status()
+
+
+async def selection_remove(labels: list[str]) -> None:
+    client = _get_client()
+    payload = SelectionRemoveRequest(labels=labels)
+    response = await client.post(
+        f"{_get_base_url()}/selection/remove",
         json=payload.model_dump(),
     )
     response.raise_for_status()

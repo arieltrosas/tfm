@@ -26,9 +26,6 @@ func _ready() -> void:
 	chat_view.setup(_chat_service)
 	viewer_view.setup()
 
-	if BackendAPI.backend_port > 0:
-		BackendAPI.volume_set(viewer_view.get_gizmo_box())
-
 	AppEventBus.backend_ready.emit()
 	await _chat_service.refresh_models()
 

@@ -16,9 +16,9 @@ signal workspace_file_added(file_id: StringName, path: String)
 @warning_ignore("unused_signal")
 signal workspace_file_removed(file_id: StringName)
 
-# Volume
+# Selection
 @warning_ignore("unused_signal")
-signal volume_changed(volume: Variant)
+signal selections_changed(selections: Dictionary)
 
 # Chat / models
 @warning_ignore("unused_signal")
