@@ -25,8 +25,8 @@ func _ready() -> void:
 	yaw = rotation.y
 	pitch = rotation.x
 
-## Receives forwarded input events from the parent Viewport Control wrapper
-func handle_editor_input(event: InputEvent) -> void:
+## Input
+func handle_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_MIDDLE:

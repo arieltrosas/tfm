@@ -34,7 +34,7 @@ class GeometryService:
             raise IsADirectoryError(f"Directory '{dst_path.parent}' is not a directory")
         if not is_supported_triangle_mesh_format(src_path):
             raise ValueError(f"File '{src_path}' is not a valid mesh format")
-        if not is_supported_triangle_mesh_extension(dst_path):
+        if not is_supported_triangle_mesh_format(dst_path):
             raise ValueError(f"File '{dst_path}' is not a valid mesh format")
 
         mesh = read_triangle_mesh(src_path)

@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3 uid="uid://crn2njs5ddl0r"]
+
+[ext_resource type="Script" uid="uid://ci7qse4ri4mpe" path="res://scripts/gizmos/box_gizmo.gd" id="1_46wyj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_06462"]
+no_depth_test = true
+shading_mode = 0
+vertex_color_use_as_albedo = true
+disable_receive_shadows = true
+
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_k1kst"]
+resource_local_to_scene = true
+
+[node name="BoxGizmo" type="Node3D"]
+script = ExtResource("1_46wyj")
+
+[node name="EdgeMesh" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+material_override = SubResource("StandardMaterial3D_06462")
+cast_shadow = 0
+mesh = SubResource("ImmediateMesh_k1kst")

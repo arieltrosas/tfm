@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3 uid="uid://d4hvclxmf41a"]
+
+[ext_resource type="Script" uid="uid://dfdlxce02prwr" path="res://scripts/gizmos/point_gizmo.gd" id="1_bvh35"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1svyl"]
+render_priority = -1
+no_depth_test = true
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(0, 0, 0, 1)
+disable_receive_shadows = true
+billboard_mode = 2
+billboard_keep_scale = true
+grow = true
+grow_amount = 0.3
+fixed_size = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3j4bh"]
+next_pass = SubResource("StandardMaterial3D_1svyl")
+no_depth_test = true
+shading_mode = 0
+vertex_color_use_as_albedo = true
+disable_receive_shadows = true
+billboard_mode = 2
+billboard_keep_scale = true
+fixed_size = true
+
+[sub_resource type="SphereMesh" id="SphereMesh_w5ww4"]
+material = SubResource("StandardMaterial3D_3j4bh")
+
+[node name="PointGizmo" type="Node3D"]
+script = ExtResource("1_bvh35")
+
+[node name="PointMesh" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(0.015, 0, 0, 0, 0.015, 0, 0, 0, 0.015, 0, 0, 0)
+cast_shadow = 0
+mesh = SubResource("SphereMesh_w5ww4")

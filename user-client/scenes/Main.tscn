@@ -1,10 +1,11 @@
-[gd_scene load_steps=9 format=3 uid="uid://c2jlugpjv5wj6"]
+[gd_scene load_steps=10 format=3 uid="uid://c2jlugpjv5wj6"]
 
 [ext_resource type="Script" uid="uid://cnk1nfb03yrxf" path="res://scripts/app/app.gd" id="1_c01mt"]
 [ext_resource type="Texture2D" uid="uid://c46ntnrnfpw6g" path="res://icon.svg" id="1_rarhs"]
 [ext_resource type="PackedScene" uid="uid://6pybjfcm0y65" path="res://scenes/ui/Workspace.tscn" id="2_vcsgt"]
 [ext_resource type="Texture2D" uid="uid://bs2u268jy7te4" path="res://resources/icon-log-in.svg" id="3_c01mt"]
 [ext_resource type="PackedScene" uid="uid://bv10k2f36u5kv" path="res://scenes/ui/Viewer.tscn" id="4_c01mt"]
+[ext_resource type="PackedScene" uid="uid://jri0hthyuqyd" path="res://scenes/ui/SelectionsList.tscn" id="5_nxtc6"]
 [ext_resource type="PackedScene" uid="uid://hf6qysxl5dqv" path="res://scenes/ui/Chat.tscn" id="5_vcsgt"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c01mt"]
@@ -178,7 +179,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer"]
+[node name="SelectionsList" parent="VBoxContainer/HSplitContainer/LeftPanel/VSplitContainer" instance=ExtResource("5_nxtc6")]
 layout_mode = 2
 size_flags_vertical = 3
 

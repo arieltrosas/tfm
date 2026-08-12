@@ -8,21 +8,11 @@ SUPPORTED_TRIANGLE_MESH_FORMATS = [".ply", ".stl", ".obj", ".off", ".gltf", ".gl
 
 
 def is_supported_point_cloud_format(file_path: str | Path) -> bool:
-    file_path = Path(file_path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"File '{file_path}' not found")
-    if not file_path.is_file():
-        raise IsADirectoryError(f"File '{file_path}' is a directory")
-    return file_path.suffix.lower() in SUPPORTED_POINT_CLOUD_FORMATS
+    return Path(file_path).suffix.lower() in SUPPORTED_POINT_CLOUD_FORMATS
 
 
 def is_supported_triangle_mesh_format(file_path: str | Path) -> bool:
-    file_path = Path(file_path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"File '{file_path}' not found")
-    if not file_path.is_file():
-        raise IsADirectoryError(f"File '{file_path}' is a directory")
-    return file_path.suffix.lower() in SUPPORTED_TRIANGLE_MESH_FORMATS
+    return Path(file_path).suffix.lower() in SUPPORTED_TRIANGLE_MESH_FORMATS
 
 
 def read_point_cloud(file_path: str | Path) -> PointCloud:
