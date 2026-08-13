@@ -15,6 +15,10 @@ signal workspace_files_changed(files: Array)
 signal workspace_file_added(file_id: StringName, path: String)
 @warning_ignore("unused_signal")
 signal workspace_file_removed(file_id: StringName)
+@warning_ignore("unused_signal")
+signal workspace_geometry_loaded(file_id: StringName)
+@warning_ignore("unused_signal")
+signal workspace_item_visibility_changed(file_id: StringName, visible: bool)
 
 # Selection
 @warning_ignore("unused_signal")

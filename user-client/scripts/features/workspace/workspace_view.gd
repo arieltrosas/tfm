@@ -9,6 +9,7 @@ var workspace: Dictionary[String, WorkspaceItem] = {}
 func setup(service: WorkspaceService) -> void:
 	_service = service
 	AppEventBus.workspace_files_changed.connect(_on_workspace_files_changed)
+	AppEventBus.workspace_geometry_loaded.connect(_on_workspace_geometry_loaded)
 
 
 func _ready() -> void:
@@ -41,9 +42,20 @@ func _add_item(file: StringName) -> void:
 
 	var item: WorkspaceItem = WorkspaceItemScn.instantiate()
 	item.file_name = ""
+	item.visibility_toggled.connect(_on_item_visibility_toggled.bind(file))
 	workspace[file] = item
 	%ItemList.add_child(item)
 	_update_item(file)
+
+
+func _on_workspace_geometry_loaded(file: StringName) -> void:
+	if file not in workspace:
+		return
+	workspace[file].enable_toggles(true)
+
+
+func _on_item_visibility_toggled(visible: bool, file: StringName) -> void:
+	AppEventBus.workspace_item_visibility_changed.emit(file, visible)
 
 
 func _remove_item(file: StringName) -> void:

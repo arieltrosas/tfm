@@ -32,6 +32,9 @@ var _editing_viewport_id: String = ""
 func setup() -> void:
 	AppEventBus.workspace_file_added.connect(_on_workspace_file_added)
 	AppEventBus.workspace_file_removed.connect(_on_workspace_file_removed)
+	AppEventBus.workspace_item_visibility_changed.connect(
+		_on_workspace_item_visibility_changed
+	)
 	AppEventBus.selections_changed.connect(_on_selections_changed)
 
 
@@ -113,6 +116,15 @@ func _on_workspace_file_removed(file_id: StringName) -> void:
 		editor_world.remove_child(object)
 
 	object.queue_free()
+
+
+func _on_workspace_item_visibility_changed(
+	file_id: StringName,
+	visible: bool
+) -> void:
+	if file_id not in _objects:
+		return
+	_objects[file_id].visible = visible
 
 
 func _on_selections_changed(selections: Dictionary) -> void:
@@ -319,6 +331,7 @@ func _load_gltf(file_id: StringName, source_path: String) -> void:
 
 	_objects[file_id] = object
 	editor_world.add_child(object)
+	AppEventBus.workspace_geometry_loaded.emit(file_id)
 
 
 func _on_subviewport_gui_input(
