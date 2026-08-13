@@ -35,10 +35,13 @@ def read_triangle_mesh(file_path: str | Path) -> TriangleMesh:
         raise FileNotFoundError(f"File '{file_path}' not found")
     if not file_path.is_file():
         raise IsADirectoryError(f"File '{file_path}' is a directory")
-    mesh = o3d.t.io.read_triangle_mesh(file_path)
-    if not mesh:
+    mesh = o3d.t.io.read_triangle_mesh(
+        file_path,
+        enable_post_processing=False,
+    )
+    if mesh.is_empty():
         raise ValueError(f"File '{file_path}' is not a valid triangle mesh")
-    
+
     return mesh
 
 
@@ -57,7 +60,17 @@ def write_triangle_mesh(file_path: str, triangle_mesh: TriangleMesh) -> None:
         raise FileNotFoundError(f"Directory '{file_path.parent}' not found")
     if not file_path.parent.is_dir():
         raise IsADirectoryError(f"Directory '{file_path.parent}' is not a directory")
-    o3d.t.io.write_triangle_mesh(file_path, mesh_to_tensor(triangle_mesh))
+    success = o3d.t.io.write_triangle_mesh(
+        file_path,
+        mesh_to_tensor(triangle_mesh),
+        write_vertex_normals=True,
+        write_vertex_colors=True,
+        write_triangle_uvs=True,
+    )
+    if not success:
+        raise IOError(
+            f"Open3D failed to write triangle mesh '{file_path}'"
+        )
 
 
 def convert_point_cloud_to_pcd(input_path: str | Path, output_path: str | Path | None = None) -> None:

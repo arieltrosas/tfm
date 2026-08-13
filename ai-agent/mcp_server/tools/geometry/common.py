@@ -22,6 +22,7 @@ from geometry.io import (
     write_triangle_mesh,
     write_point_cloud,
 )
+from geometry.simplify import simplify_mesh as simplify_mesh_geometry
 
 from common.types import AABB
 
@@ -100,14 +101,15 @@ def register(mcp: FastMCP) -> None:
     ) -> str:
         """
         Simplify a mesh and write the result to a file in the workspace.
+        Preserves appearance attributes (vertex colors, texture UVs, material)
+        when present on the input mesh.
         """
 
         root = Path(await workspace())
         input_path = resolve_within_root(root, input_file)
         output_path = resolve_within_root(root, output_file)
-        
-        mesh = mesh_to_tensor(read_triangle_mesh(input_path))
-        mesh = mesh.simplify_quadric_decimation(target_reduction=reduction)
+
+        mesh = simplify_mesh_geometry(read_triangle_mesh(input_path), reduction)
         write_triangle_mesh(output_path, mesh)
 
         return output_path.name
@@ -374,12 +376,32 @@ def register(mcp: FastMCP) -> None:
 
 
     @mcp.tool()
-    async def mesh_compute_normals(
+    async def mesh_compute_vertex_normals(
         input_file: str,
         output_file: str,
     ) -> str:
         """
-        Filter a mesh using average neighborhood operations.
+        Compute vertex normals for a mesh.
+        """
+
+        root = Path(await workspace())
+        input_path = resolve_within_root(root, input_file)
+        output_path = resolve_within_root(root, output_file)
+        mesh = mesh_to_legacy(read_triangle_mesh(input_path))
+
+        mesh = mesh.compute_vertex_normals()
+        write_triangle_mesh(output_path, mesh)
+
+        return output_path.name
+    
+
+    @mcp.tool()
+    async def mesh_compute_triangle_normals(
+        input_file: str,
+        output_file: str,
+    ) -> str:
+        """
+        Compute triangle normals for a mesh.
         """
 
         root = Path(await workspace())

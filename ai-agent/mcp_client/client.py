@@ -113,15 +113,23 @@ class OllamaAdapter(LLMProviderAdapter):
             assistant_msg["tool_calls"] = []
             for idx, tc in enumerate(response.message.tool_calls):
                 call_id = f"call_{idx}"
-                args_dict = tc.function.arguments if isinstance(tc.function.arguments, dict) else dict(tc.function.arguments)
-                args_str = json.dumps(args_dict) if isinstance(args_dict, dict) else str(args_dict)
+                raw_args = tc.function.arguments
+                if isinstance(raw_args, dict):
+                    args_dict = raw_args
+                elif isinstance(raw_args, str):
+                    try:
+                        args_dict = json.loads(raw_args) if raw_args else {}
+                    except json.JSONDecodeError:
+                        args_dict = {}
+                else:
+                    args_dict = {}
 
                 assistant_msg["tool_calls"].append({
                     "id": call_id,
                     "type": "function",
                     "function": {
                         "name": tc.function.name,
-                        "arguments": args_str
+                        "arguments": args_dict,
                     }
                 })
 
@@ -280,31 +288,17 @@ class MCPClient:
         if not self.adapter:
             raise ProviderNotConnected("No connected LLM client adapter found.")
 
-        # Pre-fetch the application state via server tool directly before LLM interaction
-        try:
-            state_result = await self.session.call_tool("get_app_state", arguments={})
-            state_json_str = "\n".join([c.text for c in state_result.content if isinstance(c, TextContent)])
-            state_context = f"\n\nCURRENT RUNTIME APPLICATION STATE (Injected Context):\n{state_json_str}"
-        except Exception as e:
-            self.logger.error(f"Failed pre-fetching app state: {e}")
-            state_context = "\n\nCURRENT RUNTIME APPLICATION STATE: [Unavailable due to retrieval failure]"
-
         system_content = (
             "You are an expert AI assistant tightly connected to a Model Context Protocol (MCP) server "
             "built for 3D geometric processing and engineering calculations.\n"
             "You have direct access to an active processing workspace and centralized application state through "
             "your exposed tools.\n"
-            "CRITICAL OPERATIONAL NOTICE: The internal workspace file directory and active application variables "
-            "are highly volatile and subject to modification outside of this direct conversation history. "
-            "You must frequently and deliberately execute your tools to inspect and validate the actual, AT EACH INTERACTION WITH THE USER "
-            "to be sure of the state of the workspace (e.g., listing tracked files, validating application state) before giving a response, "
-            "forming execution assumptions or running complex calculations."
+            "When a user's request depends on current workspace or application state, inspect that state using "
+            "the appropriate tools before acting. Do not rely on conversation history for volatile state. "
+            "Do not inspect state when it is irrelevant to the user's request."
         )
 
-        # Merge core system instructions with the freshly collected state payload
-        full_system_prompt = system_content + state_context
-
-        system_message: dict[str, Any] = {"role": "system", "content": full_system_prompt}
+        system_message: dict[str, Any] = {"role": "system", "content": system_content}
         if not self.chat or self.chat[0].get('role') != 'system':
             self.chat.insert(0, system_message)
         else:
