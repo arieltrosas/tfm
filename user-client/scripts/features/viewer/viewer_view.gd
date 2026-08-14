@@ -128,8 +128,29 @@ func _on_workspace_item_visibility_changed(
 
 
 func _on_selections_changed(selections: Dictionary) -> void:
+	_rekey_renamed_gizmos(selections)
 	_remove_deleted_gizmos(selections)
 	_update_selection_gizmos(selections)
+
+
+func _rekey_renamed_gizmos(selections: Dictionary) -> void:
+	var removed: Array[String] = []
+	var added: Array[String] = []
+	for id in _selections:
+		if id not in selections:
+			removed.append(id)
+	for id in selections:
+		if id not in _selections:
+			added.append(id)
+	if removed.size() != 1 or added.size() != 1:
+		return
+
+	var old_id := removed[0]
+	var new_id := added[0]
+	var gizmo: SelectionGizmo = _selections[old_id]
+	_selections.erase(old_id)
+	_selections[new_id] = gizmo
+	gizmo.name = "Gizmo_%s" % new_id
 
 
 func _remove_deleted_gizmos(selections: Dictionary) -> void:
@@ -168,7 +189,7 @@ func _get_or_create_gizmo(
 		return null
 
 	gizmo.name = "Gizmo_%s" % id
-	gizmo.gizmo_edited.connect(_on_gizmo_edited.bind(id))
+	gizmo.gizmo_edited.connect(_on_gizmo_edited.bind(gizmo))
 	editor_world.add_child(gizmo)
 	_selections[id] = gizmo
 
@@ -217,9 +238,9 @@ func _update_box_gizmo(
 	gizmo.set_aabb(_parse_aabb(selection.get("aabb", {})))
 
 
-func _on_gizmo_edited(id: String) -> void:
-	var gizmo: SelectionGizmo = _selections.get(id)
-	if gizmo == null:
+func _on_gizmo_edited(gizmo: SelectionGizmo) -> void:
+	var id := _id_for_gizmo(gizmo)
+	if not id:
 		return
 
 	var selection := _selection_payload_from_gizmo(gizmo)
@@ -227,6 +248,13 @@ func _on_gizmo_edited(id: String) -> void:
 		return
 
 	await BackendAPI.selection_add({id: selection})
+
+
+func _id_for_gizmo(gizmo: SelectionGizmo) -> String:
+	for id in _selections:
+		if _selections[id] == gizmo:
+			return id
+	return ""
 
 
 func _selection_payload_from_gizmo(gizmo: SelectionGizmo) -> Dictionary:

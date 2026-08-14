@@ -35,6 +35,22 @@ class StateService:
         await self._publish_selections_changed()
         return []
 
+    async def rename_selection(self, old_label: str, new_label: str) -> None:
+        """Rename a selection label, preserving its data and dict order."""
+        if old_label == new_label:
+            return
+        if old_label not in self._selections:
+            raise KeyError(old_label)
+        if not new_label:
+            raise ValueError("New label must not be empty")
+        if new_label in self._selections:
+            raise ValueError(f"Selection already exists: {new_label}")
+        self._selections = {
+            (new_label if label == old_label else label): selection
+            for label, selection in self._selections.items()
+        }
+        await self._publish_selections_changed()
+
     async def _publish_selections_changed(self) -> None:
         payload = {"selections": self.get_snapshot().model_dump()["selections"]}
         await self._event_bus.publish(

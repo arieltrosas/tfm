@@ -39,10 +39,11 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="MarginContainer/FileDescriptor/HBoxContainer"]
+[node name="Name" type="LineEdit" parent="MarginContainer/FileDescriptor/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "ExampleSelection"
-vertical_alignment = 1
-clip_text = true
+text = "PointA"
+flat = true
+
+[connection signal="text_changed" from="MarginContainer/FileDescriptor/HBoxContainer/Name" to="." method="_on_name_text_changed"]

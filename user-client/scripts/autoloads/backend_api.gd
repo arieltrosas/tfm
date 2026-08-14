@@ -90,6 +90,18 @@ func selection_remove(labels: Array) -> bool:
 	return true
 
 
+func selection_rename(old_label: String, new_label: String) -> bool:
+	var response = await _send_request(
+		"/selection/rename",
+		HTTPClient.METHOD_POST,
+		JSON.stringify({"old_label": old_label, "new_label": new_label})
+	)
+	if _backend_error(response):
+		_print_backend_error("/selection/rename", response)
+		return false
+	return true
+
+
 # chat
 
 func chat(msg: String) -> String:

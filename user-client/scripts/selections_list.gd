@@ -3,6 +3,7 @@ class_name SelectionsList extends PanelContainer
 const SelectionsListItemScn = preload("res://scenes/ui/SelectionsListItem.tscn")
 
 var selections: Dictionary[String, SelectionsListItem] = {}
+var _rename_pending: Dictionary[SelectionsListItem, bool] = {}
 
 
 func _ready() -> void:
@@ -15,6 +16,7 @@ func _add_item(id: String) -> void:
 	
 	var item: SelectionsListItem = SelectionsListItemScn.instantiate()
 	item.id = id
+	item.name_changed.connect(_on_item_name_changed.bind(item))
 	selections[id] = item
 	
 	%ItemList.add_child(item)
@@ -25,6 +27,7 @@ func _remove_item(id: String) -> void:
 		return
 
 	var item: SelectionsListItem = selections[id]
+	_rename_pending.erase(item)
 	selections.erase(id)
 	%ItemList.remove_child(item)
 	item.queue_free()
@@ -47,6 +50,42 @@ func _on_remove_pressed() -> void:
 		_remove_item(id)
 	BackendAPI.selection_remove(selected)
 	_deselect_items()
+
+
+func _id_for_item(item: SelectionsListItem) -> String:
+	for id in selections:
+		if selections[id] == item:
+			return id
+	return ""
+
+
+func _on_item_name_changed(_name: String, item: SelectionsListItem) -> void:
+	if _rename_pending.get(item, false):
+		return
+	_rename_pending[item] = true
+	await _flush_item_rename(item)
+	_rename_pending.erase(item)
+
+
+func _flush_item_rename(item: SelectionsListItem) -> void:
+	while is_instance_valid(item):
+		var old_id := _id_for_item(item)
+		var new_id := item.id
+		if not old_id or old_id == new_id or not new_id:
+			return
+		if new_id in selections:
+			return
+
+		selections.erase(old_id)
+		selections[new_id] = item
+		var ok := await BackendAPI.selection_rename(old_id, new_id)
+		if ok:
+			continue
+
+		if _id_for_item(item) == new_id:
+			selections.erase(new_id)
+			selections[old_id] = item
+		return
 
 
 func _on_selections_changed(backend_selections: Dictionary) -> void:

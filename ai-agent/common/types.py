@@ -62,6 +62,11 @@ class SelectionRemoveRequest(BaseModel):
     labels: list[str]
 
 
+class SelectionRenameRequest(BaseModel):
+    old_label: str
+    new_label: str
+
+
 # --- Chat Endpoints Schemas ---
 
 class ChatRequest(BaseModel):

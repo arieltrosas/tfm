@@ -12,6 +12,7 @@ from common.types import (
     Selection,
     SelectionAddRequest,
     SelectionRemoveRequest,
+    SelectionRenameRequest,
     WorkspaceDownloadRequest,
     WorkspaceDownloadResponse,
     WorkspaceFilesResponse,
@@ -66,6 +67,16 @@ async def selection_remove(labels: list[str]) -> None:
     payload = SelectionRemoveRequest(labels=labels)
     response = await client.post(
         f"{_get_base_url()}/selection/remove",
+        json=payload.model_dump(),
+    )
+    response.raise_for_status()
+
+
+async def selection_rename(old_label: str, new_label: str) -> None:
+    client = _get_client()
+    payload = SelectionRenameRequest(old_label=old_label, new_label=new_label)
+    response = await client.post(
+        f"{_get_base_url()}/selection/rename",
         json=payload.model_dump(),
     )
     response.raise_for_status()
