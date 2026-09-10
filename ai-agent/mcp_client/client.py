@@ -103,10 +103,12 @@ class OllamaAdapter(LLMProviderAdapter):
         )
 
         assistant_msg: dict[str, Any] = {
-            "role": "assistant", 
-            "content": response.message.content or ""
+            "role": "assistant",
+            "content": response.message.content or "",
         }
-        
+        if response.message.thinking:
+            assistant_msg["thinking"] = response.message.thinking
+
         pending_tool_calls = []
 
         if response.message.tool_calls:
@@ -289,13 +291,13 @@ class MCPClient:
             raise ProviderNotConnected("No connected LLM client adapter found.")
 
         system_content = (
-            "You are an expert AI assistant tightly connected to a Model Context Protocol (MCP) server "
-            "built for 3D geometric processing and engineering calculations.\n"
-            "You have direct access to an active processing workspace and centralized application state through "
-            "your exposed tools.\n"
-            "When a user's request depends on current workspace or application state, inspect that state using "
-            "the appropriate tools before acting. Do not rely on conversation history for volatile state. "
-            "Do not inspect state when it is irrelevant to the user's request."
+            "You are an expert AI assistant in cultural heritage tightly connected to a Model Context Protocol (MCP) server built for 3D geometric processing and analysis.\n"
+            "You have direct access to an active workspace and centralized application state through your exposed tools.\n"
+            "Both you and the user can modify and interact with the workspace and application state.\n"
+            "When a user's request depends on current workspace or application state, inspect that state using the appropriate tools before acting. Do not rely on conversation history for volatile state.\n"
+            "Do not inspect state when it is irrelevant to the user's request to save time and resources.\n"
+            "Do not make assumptions about the user's intent or the results of analysis. Always ask the user and use tools to verify the results.\n"
+            "Precission is of utmost importance. Always use tools to verify the results and do not make assumptions.\n"
         )
 
         system_message: dict[str, Any] = {"role": "system", "content": system_content}
