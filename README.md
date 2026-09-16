@@ -4,7 +4,7 @@ Este repositorio contiene el código fuente de la aplicación desarrollada para 
 El asistente está basado en LLMs (***Large Language Models***) que emplean un servidor MCP (***Model Context Protocol***) de herramientas de procesamiento y análisis geométrico para asistir en las tareas.
 La aplicación cuenta con una interfaz de usuario que permite visualizar e interactuar con los modelos 3D y conversar con el asistente.
 
-<img width="1920" height="1048" alt="Screenshot from 2026-08-31 09-59-05" src="https://github.com/user-attachments/assets/f7d493da-a25c-4dfe-a7ba-b308fc3a8f53" />
+![application](docs/images/application.png)
 
 ## Estructura del Proyecto
 
@@ -12,7 +12,7 @@ El proyecto se estructura en dos bloques principales: un frontend, que actúa co
 El directorio **ai-agent** implementa el backend empleando Python, FastAPI, Open3D y FastMCP. El directorio **user-client** implenta el frontend empleado Godot. Los scripts de automatización
 para el proyecto pueden encontrarse en el directorio **scripts**.
 
-[system-architecture.pdf](https://github.com/user-attachments/files/32277893/system-architecture.pdf)
+![system architecture](docs/images/system-architecture.svg)
 
 ## Dependencias
 
@@ -34,7 +34,7 @@ The assistant is based on LLMs (***Large Language Models***) that use an MCP (**
 
 The application features a user interface that allows users to visualize and interact with 3D models and communicate with the assistant.
 
-<img width="1920" height="1048" alt="Screenshot from 2026-08-31 09-59-05" src="https://github.com/user-attachments/assets/f7d493da-a25c-4dfe-a7ba-b308fc3a8f53" />
+![application](docs/images/application.png)
 
 ## Project Structure
 
@@ -42,7 +42,7 @@ The project is divided into two main components: a frontend, which serves as the
 
 The **ai-agent** directory contains the backend, implemented using Python, FastAPI, Open3D, and FastMCP. The **user-client** directory contains the frontend, implemented using Godot. The project's automation scripts can be found in the **scripts** directory.
 
-[system-architecture.pdf](https://github.com/user-attachments/files/32277893/system-architecture.pdf)
+![system architecture](docs/images/system-architecture.svg)
 
 ## Dependencies
 
