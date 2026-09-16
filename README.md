@@ -1,24 +1,54 @@
-# 3D Archaeological Analysis Tool
+# Asistente IA para Análisis 3D en Patrimonio Cultural
 
-This repository contains the source code for a 3D archaeological analysis tool powered by an AI agent based on the Model Context Protocol. The frontend of the application is implemented using the Godot Game Engine and the backend, the AI assistant, is implemented using Python as a local backend using FastAPI. The LLM provider is currently set to use local models through Ollama.
+Este repositorio contiene el código fuente de la aplicación desarrollada para mi Trabajo Fin de Máster: una herramienta de asistencia en análisis 3D orientado al patrimonio cultural.
+El asistente está basado en LLMs (***Large Language Models***) que emplean un servidor MCP (***Model Context Protocol***) de herramientas de procesamiento y análisis geométrico para asistir en las tareas.
+La aplicación cuenta con una interfaz de usuario que permite visualizar e interactuar con los modelos 3D y conversar con el asistente.
 
-## Structure of the Repository
+<img width="1920" height="1048" alt="Screenshot from 2026-08-31 09-59-05" src="https://github.com/user-attachments/assets/f7d493da-a25c-4dfe-a7ba-b308fc3a8f53" />
 
-### ai-agent
-Source code for the Python backend of the AI assistant. You can use any tools to package or run the code, but it is recommended to use UV as a package manager and PyInstaller to package the program.
+## Estructura del Proyecto
 
-### user-client
-Source code for the frontend, implemented using Godot 4.x. The code makes use of a GDExtension module, godot-ply, which is implemented in another repository. Libraries are included for simplicity.
+El proyecto se estructura en dos bloques principales: un frontend, que actúa como la interfaz de usuario y aplicación cliente, y un backend que implementa el agente IA y el cliente-servidor MCP.
+El directorio **ai-agent** implementa el backend empleando Python, FastAPI, Open3D y FastMCP. El directorio **user-client** implenta el frontend empleado Godot. Los scripts de automatización
+para el proyecto pueden encontrarse en el directorio **scripts**.
 
-### scripts
-Build scripts for the project.
+[system-architecture.pdf](https://github.com/user-attachments/files/32277893/system-architecture.pdf)
+
+## Dependencias
+
+Para hacer funcionar el proyecto a partir del código fuente es necesario contar con:
+
+* **Python**: Todas las dependencias incluidas en proyecto python descrito en **ai-agent**.
+* **Godot 4.x**: Para el cliente.
+
+Además, es necesario disponer de un proveedor de servicios LLM. El proyecto puede funcionar mediante **Ollama** de forma local, empleando los puertos por defecto,
+o mediante un proveedor remoto compatible con el estándar de la API de **OpenAI**.
 
 ---
 
+# AI Assistant for 3D Analysis in Cultural Heritage
+
+This repository contains the source code for the application developed as part of my Master's Thesis: an assistance tool for 3D analysis focused on cultural heritage.
+
+The assistant is based on LLMs (***Large Language Models***) that use an MCP (***Model Context Protocol***) server providing geometric processing and analysis tools to assist with these tasks.
+
+The application features a user interface that allows users to visualize and interact with 3D models and communicate with the assistant.
+
+<img width="1920" height="1048" alt="Screenshot from 2026-08-31 09-59-05" src="https://github.com/user-attachments/assets/f7d493da-a25c-4dfe-a7ba-b308fc3a8f53" />
+
+## Project Structure
+
+The project is divided into two main components: a frontend, which serves as the user interface and client application, and a backend, which implements the AI agent and the MCP client-server.
+
+The **ai-agent** directory contains the backend, implemented using Python, FastAPI, Open3D, and FastMCP. The **user-client** directory contains the frontend, implemented using Godot. The project's automation scripts can be found in the **scripts** directory.
+
+[system-architecture.pdf](https://github.com/user-attachments/files/32277893/system-architecture.pdf)
+
 ## Dependencies
 
-For this project to work, you need the following installed:
+To run the project from the source code, the following are required:
 
-* **Ollama** (configured to run local LLM models)
-* **Godot** (version 4.x)
-* **Python** (along with all the packages specified inside the `ai-agent` directory)
+* **Python**: All dependencies listed in the Python project described in **ai-agent**.
+* **Godot 4.x**: For the client.
+
+In addition, an LLM service provider is required. The project can run locally using **Ollama**, using its default ports, or through a remote provider compatible with the **OpenAI API** standard.
