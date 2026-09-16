@@ -24,6 +24,8 @@ const GLTF_EXTENSIONS: Array[String] = ["glb", "gltf"]
 
 var _objects: Dictionary[String, Node3D] = {}
 var _selections: Dictionary[String, SelectionGizmo] = {}
+## Bumped to cancel in-flight mesh loads when a file is removed or superseded.
+var _load_tokens: Dictionary[String, int] = {}
 
 var _editing_gizmo: SelectionGizmo = null
 var _editing_viewport_id: String = ""
@@ -32,6 +34,7 @@ var _editing_viewport_id: String = ""
 func setup() -> void:
 	AppEventBus.workspace_file_added.connect(_on_workspace_file_added)
 	AppEventBus.workspace_file_removed.connect(_on_workspace_file_removed)
+	AppEventBus.workspace_file_modified.connect(_on_workspace_file_modified)
 	AppEventBus.workspace_item_visibility_changed.connect(
 		_on_workspace_item_visibility_changed
 	)
@@ -86,11 +89,30 @@ func _sync_worlds() -> void:
 		viewport.world_3d = world_3d
 
 
+func _next_load_token(file: String) -> int:
+	var token: int = int(_load_tokens.get(file, 0)) + 1
+	_load_tokens[file] = token
+	return token
+
+
+func _invalidate_load(file: String) -> void:
+	_load_tokens[file] = int(_load_tokens.get(file, 0)) + 1
+
+
+func _is_load_current(file: String, token: int) -> bool:
+	return int(_load_tokens.get(file, 0)) == token
+
+
 func _on_workspace_file_added(file: String, source_path: String) -> void:
-	if file in _objects:
+	var file_key := str(file)
+	if file_key in _objects:
 		return
 
+	var token := _next_load_token(file_key)
+
 	var is_mesh: bool = await BackendAPI.geometry_mesh_supported(source_path)
+	if not _is_load_current(file_key, token):
+		return
 	if not is_mesh:
 		return
 
@@ -100,17 +122,23 @@ func _on_workspace_file_added(file: String, source_path: String) -> void:
 	)
 
 	await BackendAPI.geometry_mesh_convert(source_path, tmp_path)
-	_load_gltf(file, tmp_path)
+	if not _is_load_current(file_key, token):
+		DirAccess.remove_absolute(tmp_path)
+		return
 
+	_load_gltf(file_key, tmp_path)
 	DirAccess.remove_absolute(tmp_path)
 
 
 func _on_workspace_file_removed(file_id: StringName) -> void:
-	if file_id not in _objects:
+	var file_key := str(file_id)
+	_invalidate_load(file_key)
+
+	if file_key not in _objects:
 		return
 
-	var object: Node3D = _objects[file_id]
-	_objects.erase(file_id)
+	var object: Node3D = _objects[file_key]
+	_objects.erase(file_key)
 
 	if object.get_parent() == editor_world:
 		editor_world.remove_child(object)
@@ -118,13 +146,28 @@ func _on_workspace_file_removed(file_id: StringName) -> void:
 	object.queue_free()
 
 
+func _on_workspace_file_modified(file_id: StringName, path: String) -> void:
+	var file_key := str(file_id)
+	var was_visible := true
+	if file_key in _objects:
+		was_visible = _objects[file_key].visible
+		_on_workspace_file_removed(file_id)
+	else:
+		_invalidate_load(file_key)
+
+	await _on_workspace_file_added(file_key, path)
+	if file_key in _objects:
+		_objects[file_key].visible = was_visible
+
+
 func _on_workspace_item_visibility_changed(
 	file_id: StringName,
 	visible: bool
 ) -> void:
-	if file_id not in _objects:
+	var file_key := str(file_id)
+	if file_key not in _objects:
 		return
-	_objects[file_id].visible = visible
+	_objects[file_key].visible = visible
 
 
 func _on_selections_changed(selections: Dictionary) -> void:

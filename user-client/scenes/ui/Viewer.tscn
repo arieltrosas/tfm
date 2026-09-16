@@ -1,20 +1,21 @@
-[gd_scene load_steps=8 format=3 uid="uid://bv10k2f36u5kv"]
+[gd_scene load_steps=9 format=3 uid="uid://bv10k2f36u5kv"]
 
 [ext_resource type="Script" uid="uid://cw17vuuqs0agu" path="res://scripts/features/viewer/viewer_view.gd" id="1_g8q63"]
+[ext_resource type="Shader" uid="uid://b2jcw0qrs5pxo" path="res://scripts/shaders/background.gdshader" id="2_l83dn"]
 [ext_resource type="Script" uid="uid://dc1t0tywitqrs" path="res://scripts/perspective_camera_3d.gd" id="3_v4ncb"]
 [ext_resource type="Script" uid="uid://g88dydjhkuh8" path="res://scripts/ortho_camera_3d.gd" id="4_l83dn"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_g8q63"]
-sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
-ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dcok2"]
+shader = ExtResource("2_l83dn")
+shader_parameter/top_color = Color(0.1, 0.1, 0.15, 1)
+shader_parameter/bottom_color = Color(0.35, 0.35, 0.45, 1)
 
-[sub_resource type="Sky" id="Sky_v4ncb"]
-sky_material = SubResource("ProceduralSkyMaterial_g8q63")
+[sub_resource type="Sky" id="Sky_l83dn"]
+sky_material = SubResource("ShaderMaterial_dcok2")
 
 [sub_resource type="Environment" id="Environment_l83dn"]
 background_mode = 2
-sky = SubResource("Sky_v4ncb")
-tonemap_mode = 2
+sky = SubResource("Sky_l83dn")
 
 [sub_resource type="World3D" id="World3D_v4ncb"]
 environment = SubResource("Environment_l83dn")

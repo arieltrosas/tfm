@@ -298,6 +298,7 @@ class MCPClient:
             "Do not inspect state when it is irrelevant to the user's request to save time and resources.\n"
             "Do not make assumptions about the user's intent or the results of analysis. Always ask the user and use tools to verify the results.\n"
             "Precission is of utmost importance. Always use tools to verify the results and do not make assumptions.\n"
+            "The workspace is a flat directory structure. Do not use the file system to navigate the workspace. Use the tools to navigate the workspace. When using tools, use the file names and not system paths to work with them.\n"
         )
 
         system_message: dict[str, Any] = {"role": "system", "content": system_content}

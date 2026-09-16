@@ -11,7 +11,7 @@ from ...common import resolve_within_root
 from ...api_client import workspace
 from ...types import aabb_from_o3d, aabb_to_o3d
 
-from geometry.io import read_triangle_mesh, write_point_cloud, write_triangle_mesh
+from geometry.io import ensure_pcd_path, read_triangle_mesh, write_point_cloud
 from geometry.types import AABB as O3DAABB, mesh_to_legacy
 from geometry.volume import extract_cavity_within_bounds
 from geometry.curvature import cluster_cavities
@@ -39,12 +39,12 @@ def register(mcp: FastMCP) -> None:
         voxel_size: float,
     ) -> str:
         """
-        Extract cavity voxel coordinates within a region and write it to a file as a mesh.
+        Extract cavity voxel coordinates within a region and write them as a .pcd point cloud file.
         """
 
         root = Path(await workspace())
         input_path = resolve_within_root(root, input_file)
-        output_path = resolve_within_root(root, output_file)
+        output_path = ensure_pcd_path(resolve_within_root(root, output_file))
 
         mesh = mesh_to_legacy(read_triangle_mesh(input_path))
         cavity_coords = extract_cavity_within_bounds(mesh, aabb_to_o3d(aabb), voxel_size)

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from geometry.types import TriangleMesh, PointCloud, mesh_to_tensor, point_cloud_to_tensor
 
-SUPPORTED_POINT_CLOUD_FORMATS = [".xyz", ".xyzn", ".xyzrgb", ".xyzrgba", ".pts", ".pcd"]
+SUPPORTED_POINT_CLOUD_FORMATS = [".xyz", ".xyzn", ".xyzrgb", ".xyzrgba", ".pts", ".pcd", ".ply"]
 SUPPORTED_TRIANGLE_MESH_FORMATS = [".ply", ".stl", ".obj", ".off", ".gltf", ".glb"]
 
 
@@ -13,6 +13,13 @@ def is_supported_point_cloud_format(file_path: str | Path) -> bool:
 
 def is_supported_triangle_mesh_format(file_path: str | Path) -> bool:
     return Path(file_path).suffix.lower() in SUPPORTED_TRIANGLE_MESH_FORMATS
+
+
+def ensure_pcd_path(file_path: str | Path) -> Path:
+    path = Path(file_path)
+    if path.suffix.lower() != ".pcd":
+        return path.with_suffix(".pcd")
+    return path
 
 
 def read_point_cloud(file_path: str | Path) -> PointCloud:
@@ -41,6 +48,11 @@ def read_triangle_mesh(file_path: str | Path) -> TriangleMesh:
     )
     if mesh.is_empty():
         raise ValueError(f"File '{file_path}' is not a valid triangle mesh")
+    if "indices" not in mesh.triangle or mesh.triangle.indices.shape[0] == 0:
+        raise ValueError(
+            f"File '{file_path}' appears to be a point cloud "
+            f"(contains vertices but no triangles)"
+        )
 
     return mesh
 
@@ -77,9 +89,8 @@ def convert_point_cloud_to_pcd(input_path: str | Path, output_path: str | Path |
     pcd = read_point_cloud(input_path)
 
     if output_path is None:
-        output_path = input_path.with_suffix(".pcd")
-    if not output_path.suffix == ".pcd":
-        output_path = output_path.with_suffix(".pcd")
+        output_path = Path(input_path).with_suffix(".pcd")
+    output_path = ensure_pcd_path(output_path)
     
     write_point_cloud(output_path, pcd)
 

@@ -247,14 +247,13 @@ class MeshSliceRenderer:
 def voxelize_mesh(
     vertices: np.ndarray, 
     triangles: np.ndarray, 
-    voxel_size: float,
-    render_color: bool = False
+    voxel_size: float
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Instantiates a renderer to slice a given mesh and assembles a dense binary 
     voxel grid representation.
     """
-    renderer = MeshSliceRenderer(vertices, triangles, voxel_size, render_color)
+    renderer = MeshSliceRenderer(vertices, triangles, voxel_size)
     origin = renderer.min_bound.copy()
     
     stencils, _ = renderer.render_slices()

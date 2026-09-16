@@ -49,7 +49,7 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     async def read_file(filename: str) -> str:
         """
-        Reads the content of a file in the workspace.
+        Reads the content of a file in the workspace as text.
         """
         root = Path(await workspace())
         input_path = resolve_within_root(root, filename)

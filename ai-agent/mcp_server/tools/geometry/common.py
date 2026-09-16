@@ -15,6 +15,7 @@ from geometry.types import (
 )
 
 from geometry.io import (
+    ensure_pcd_path,
     is_supported_point_cloud_format,
     is_supported_triangle_mesh_format,
     read_triangle_mesh,
@@ -45,11 +46,25 @@ def register(mcp: FastMCP) -> None:
         result = GeometryInfoResult()
         
         if is_supported_triangle_mesh_format(path):
-            mesh = mesh_to_legacy(read_triangle_mesh(path))
-            result.type = "mesh"
-            result.vertex_count = len(mesh.vertices)
-            result.face_count = len(mesh.triangles)
-            result.bounds = aabb_from_o3d(mesh.get_axis_aligned_bounding_box())
+            mesh = mesh_to_legacy(
+                o3d.t.io.read_triangle_mesh(path, enable_post_processing=False)
+            )
+            if len(mesh.triangles) > 0:
+                result.type = "mesh"
+                result.vertex_count = len(mesh.vertices)
+                result.face_count = len(mesh.triangles)
+                result.bounds = aabb_from_o3d(mesh.get_axis_aligned_bounding_box())
+            elif len(mesh.vertices) > 0:
+                result.type = "point_cloud"
+                result.point_count = len(mesh.vertices)
+                result.bounds = aabb_from_o3d(mesh.get_axis_aligned_bounding_box())
+            elif is_supported_point_cloud_format(path):
+                point_cloud = point_cloud_to_legacy(read_point_cloud(path))
+                result.type = "point_cloud"
+                result.point_count = len(point_cloud.points)
+                result.bounds = aabb_from_o3d(point_cloud.get_axis_aligned_bounding_box())
+            else:
+                raise ValueError(f"File is not a valid geometry file: {path}")
         elif is_supported_point_cloud_format(path):
             point_cloud = point_cloud_to_legacy(read_point_cloud(path))
             result.type = "point_cloud"
@@ -122,12 +137,12 @@ def register(mcp: FastMCP) -> None:
         voxel_size: float,
     ) -> str:
         """
-        Downsamples a point cloud using voxel grid filtering and write the result to a file.
+        Downsamples a point cloud using voxel grid filtering and write the result to a .pcd file.
         """
 
         root = Path(await workspace())
         input_path = resolve_within_root(root, input_file)
-        output_path = resolve_within_root(root, output_file)
+        output_path = ensure_pcd_path(resolve_within_root(root, output_file))
         
         point_cloud = point_cloud_to_tensor(read_point_cloud(input_path))
         point_cloud = point_cloud.voxel_down_sample(voxel_size=voxel_size)
@@ -185,7 +200,7 @@ def register(mcp: FastMCP) -> None:
         scale: list[float] | None = None,
     ) -> str:
         """
-        Apply translate, rotate, and/or scale transforms to a point cloud and write the result to a file.
+        Apply translate, rotate, and/or scale transforms to a point cloud and write the result to a .pcd file.
         Angles are given in degrees.
         Scale is applied to the point cloud respect to the coordinate origin.
         Rotation is performed around the coordinate origin.
@@ -193,7 +208,7 @@ def register(mcp: FastMCP) -> None:
 
         root = Path(await workspace())
         input_path = resolve_within_root(root, input_file)
-        output_path = resolve_within_root(root, output_file)
+        output_path = ensure_pcd_path(resolve_within_root(root, output_file))
         
         point_cloud = point_cloud_to_tensor(read_point_cloud(input_path))
 
@@ -223,12 +238,12 @@ def register(mcp: FastMCP) -> None:
         num_points: int = 100_000,
     ) -> str:
         """
-        Sample a mesh surface uniformly and write the result as a point cloud file.
+        Sample a mesh surface uniformly and write the result as a .pcd point cloud file.
         """
 
         root = Path(await workspace())
         input_path = resolve_within_root(root, input_file)
-        output_path = resolve_within_root(root, output_file)
+        output_path = ensure_pcd_path(resolve_within_root(root, output_file))
         
         mesh = mesh_to_tensor(read_triangle_mesh(input_path))
         point_cloud = mesh.sample_points_uniformly(number_of_points=num_points)

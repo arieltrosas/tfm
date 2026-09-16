@@ -22,12 +22,23 @@ func _on_remote_event(event_type: String, payload: Dictionary) -> void:
 	match event_type:
 		"workspace.files_changed":
 			_apply_workspace_files(payload.get("files", []))
+		"workspace.file_modified":
+			_apply_workspace_file_modified(payload.get("file", ""))
 		"selection.changed":
 			AppEventBus.selections_changed.emit(payload.get("selections", {}))
 		"app_state.changed":
 			_workspace_root = payload.get("workspace_dir", _workspace_root)
 			_apply_workspace_files(payload.get("files", []))
 			AppEventBus.selections_changed.emit(payload.get("selections", {}))
+
+
+func _apply_workspace_file_modified(file_name: Variant) -> void:
+	if str(file_name).is_empty():
+		return
+	var file_id := StringName(str(file_name))
+	if file_id not in _known_files:
+		return
+	AppEventBus.workspace_file_modified.emit(file_id, _file_path(file_id))
 
 
 func _apply_workspace_files(files: Array) -> void:

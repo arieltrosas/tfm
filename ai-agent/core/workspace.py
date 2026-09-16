@@ -1,3 +1,4 @@
+import asyncio
 import shutil
 import tempfile
 from pathlib import Path
@@ -6,12 +7,16 @@ from common.events import AppEvent, AppEventType
 from common.types import FileResult
 from core.event_bus import EventBus
 
+POLL_INTERVAL_SECONDS = 0.5
+
 
 class WorkspaceService:
     def __init__(self, event_bus: EventBus) -> None:
         self._event_bus = event_bus
         self._container = tempfile.TemporaryDirectory(prefix="mcp_workspace_")
         self._root = Path(self._container.name).resolve()
+        self._mtimes: dict[str, float] = {}
+        self._watch_task: asyncio.Task[None] | None = None
 
     @property
     def root(self) -> Path:
@@ -31,6 +36,16 @@ class WorkspaceService:
             raise FileNotFoundError(f"File '{filename}' not found")
         return candidate
 
+    def _snapshot_mtimes(self) -> dict[str, float]:
+        mtimes: dict[str, float] = {}
+        for path in self._root.iterdir():
+            if path.is_file():
+                mtimes[path.name] = path.stat().st_mtime
+        return mtimes
+
+    def _refresh_mtimes(self) -> None:
+        self._mtimes = self._snapshot_mtimes()
+
     async def _emit_files_changed(self) -> None:
         files = self.list_files()
         await self._event_bus.publish(
@@ -39,6 +54,52 @@ class WorkspaceService:
                 payload={"files": files},
             )
         )
+
+    async def _emit_file_modified(self, filename: str) -> None:
+        await self._event_bus.publish(
+            AppEvent(
+                type=AppEventType.WORKSPACE_FILE_MODIFIED,
+                payload={"file": filename},
+            )
+        )
+
+    async def sync(self) -> None:
+        current = self._snapshot_mtimes()
+        previous_names = set(self._mtimes)
+        current_names = set(current)
+
+        if previous_names != current_names:
+            await self._emit_files_changed()
+
+        for name in previous_names & current_names:
+            if current[name] > self._mtimes[name]:
+                await self._emit_file_modified(name)
+
+        self._mtimes = current
+
+    async def _watch_loop(self) -> None:
+        try:
+            while True:
+                await asyncio.sleep(POLL_INTERVAL_SECONDS)
+                await self.sync()
+        except asyncio.CancelledError:
+            raise
+
+    async def start_watching(self) -> None:
+        if self._watch_task is not None:
+            return
+        self._refresh_mtimes()
+        self._watch_task = asyncio.create_task(self._watch_loop())
+
+    async def stop_watching(self) -> None:
+        if self._watch_task is None:
+            return
+        self._watch_task.cancel()
+        try:
+            await self._watch_task
+        except asyncio.CancelledError:
+            pass
+        self._watch_task = None
 
     async def upload(self, src_paths: list[str]) -> dict[str, FileResult]:
         results: dict[str, FileResult] = {}
@@ -75,6 +136,7 @@ class WorkspaceService:
                 )
 
         await self._emit_files_changed()
+        self._refresh_mtimes()
         return results
 
     async def download(self, file_name: str, download_path: str) -> FileResult:
@@ -98,4 +160,5 @@ class WorkspaceService:
                 )
 
         await self._emit_files_changed()
+        self._refresh_mtimes()
         return results

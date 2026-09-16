@@ -40,8 +40,11 @@ async def lifespan(app: FastAPI):
         geometry=geometry,
     )
 
+    await workspace.start_watching()
+
     yield
 
+    await workspace.stop_watching()
     workspace.cleanup()
     # NOTE: mcp_client.cleanup() is intentionally handled inside main.py
     # to avoid AnyIO cross-task cancel scope violations.

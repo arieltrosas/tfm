@@ -1,6 +1,6 @@
 class_name MeshIntersect extends Object
 
-const EPSILON := 0.000001
+const EPSILON := 1e-10
 
 # Returns the distance along the ray to the intersection,
 # or INF if there is no intersection.
@@ -17,7 +17,6 @@ static func ray_intersect_triangle(
 	var h := direction.cross(edge2)
 	var det := edge1.dot(h)
 	
-	# Ray is parallel to the triangle.
 	if abs(det) < EPSILON:
 		return INF
 	
